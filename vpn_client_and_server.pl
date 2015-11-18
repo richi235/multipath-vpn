@@ -45,13 +45,12 @@ To achive this all 5 seconds it calls I<reset_routing_table()> if needed.
 =head3 [TUN-Interface Session]
 
 This Session is created B<at startup> exists permanentely and is I<unique> for one running instance of multipath vpn.
-Running on one node recieving and accepting the multipath-vpn tunnel packets from the other node.
-This session also is responsible for unpacking the contained packets and forwarding it to the clients in the local net.
-The session also creates the tun/tap interface when it is created.
+This session is responsible for unpacking the contained packets and forwarding it to the local net.
+The session also creates the TUN/TAP interface upon it's startup.
 
 =head3 [UDP-Socket Session]
 
-One Instance of Session is B<unique for for every UDP Socket> (which is unique for every link). Therefore I<several instances>
+One Instance of this Session is B<unique for for every UDP Socket> (which is unique for every link). Therefore I<several instances>
 of this session can exist and this is the non-static B<n> in the formula above.
 It handles all events corresponding to sending packets to other Multipath VPN nodes.
 Therefore this sessions takes TCP/UDP packets from the tun/tap interface, wraps them into UDP
