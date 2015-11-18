@@ -246,13 +246,13 @@ If a IP change is detected the following is done:
 
 =over
 
-=item 1. It write's a message to the controling terminal
+=item * It writes a message to the controling terminal
 
-=item 2. The sessions using the old interface are killed
+=item * The sessions using the old interface are killed
 
-=item 2. It starts a new UDP socket on the new interface ( I<using startUDPSocket()> )
+=item * It starts a new UDP socket on the new interface ( I<using startUDPSocket()> )
 
-=item 2. All the sessions are re-established 
+=item * All the sessions are re-established 
 
 =back
 
