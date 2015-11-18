@@ -698,6 +698,9 @@ POE::Session->create(
             }
 
             # read data from the tun device
+            # sysread returns 0 if it reaches EOF
+            # therefore the purpose of the loop is to read out more than TUN_MAX_FRAME from the tun_device
+            # if it contains more. Which will never happen because tun devices work as single-package interface.
             while ( sysread( $heap->{tun_device}, my $buf = "", TUN_MAX_FRAME ) )
             {
                 foreach my $sessid (
@@ -717,6 +720,7 @@ POE::Session->create(
                     }
                     unless ( $nodeadpeer || $udp_socket_sessions->{$sessid}->{con}->{active} )
                     {
+                        # use the next connection if this one is not active
                         next;
                     }
 
