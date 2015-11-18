@@ -42,14 +42,14 @@ This session keeps checking if the target is reachable, if it is reachable again
 the connection will be reestablished.
 To achive this all 5 seconds it calls I<reset_routing_table()> if needed.
 
-=head3 [Receiver Session]
+=head3 [TUN-Interface Session]
 
 This Session is created B<at startup> exists permanentely and is I<unique> for one running instance of multipath vpn.
 Running on one node recieving and accepting the multipath-vpn tunnel packets from the other node.
 This session also is responsible for unpacking the contained packets and forwarding it to the clients in the local net.
 The session also creates the tun/tap interface when it is created.
 
-=head3 [Sender Session]
+=head3 [UDP-Socket Session]
 
 One Instance of Session is B<unique for for every UDP Socket> (which is unique for every link). Therefore I<several instances>
 of this session can exist and this is the non-static B<n> in the formula above.
@@ -366,7 +366,7 @@ sub startUDPSocket
       . " with source='" . $con->{curip} . "':" . $con->{srcport}
       . " and dst=" . ( $con->{dstip}   || "-" ) . ":" . ( $con->{dstport} || "-" ) . "\n" );
 
-    # [Sender Session]
+    # [UDP-Socket Session]
     # unique for each link
     POE::Session->create(
         inline_states => {
@@ -624,7 +624,7 @@ POE::Session->create(
     },
 );
 
-# [Receiver Session]
+# [TUN-Interface Session]
 # simplified explanation of this session:
 # (_start is triggered by creation of this session therefore
 # directly "here" before kernel->run() )
