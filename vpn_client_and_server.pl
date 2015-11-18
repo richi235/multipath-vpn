@@ -766,7 +766,7 @@ POE::Session->create(
                 system("systemd-notify --ready");
 
                 # commit harakiri
-                yield("harakiri");
+                $kernel->yield("harakiri");
             }
 
         },
