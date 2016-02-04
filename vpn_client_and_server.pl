@@ -193,30 +193,6 @@ sub nagle(*;$)
     }
 }
 
-sub doReadWrite
-{
-    my $readWrite     = shift;
-    my $put           = shift;
-    my $error_handler = shift;
-
-    if (
-        defined($readWrite)
-        && (   ( ref($readWrite) eq "POE::Wheel::ReadWrite" )
-            || ( ref($readWrite) eq "POE::Wheel::UDP" ) )
-      )
-    {
-        $readWrite->put($put)
-          && $error_handler
-          && $poe_kernel->yield($error_handler)
-          if $put;
-        return 1;
-    }
-    else {
-        print "Not a ReadWrite: " . ref($readWrite) . "\n";
-    }
-    return 0;
-}
-
 sub printDebug
 {
     print "\n" . join(
