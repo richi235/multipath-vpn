@@ -103,7 +103,7 @@ use constant TUN_PKT_STRIP => 0x0001;
 use constant STRUCT_IFREQ  => 'Z16 s';
 use constant TUNNEL_DEVICE => '/dev/net/tun';
 
-# Variables
+# Global Variables
 my $sessions   = {};
 my $doCrypt    = 0;
 my $doPrepend  = undef;    # "abcdefghikjlmnopqrstuvwxyz";
