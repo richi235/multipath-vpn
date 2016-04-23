@@ -121,63 +121,71 @@ my $config   = {};
 my $seen     = {};
 my $lastseen = {};
 
+####### Section 1 START: Function Definitions #############
 
 
-# open config file
-open( CONFIG, "<", $ARGV[0] || "/etc/multivpn.cfg" )
-  || die "Config file not found: " . $!;
-
-# read and parse config file (linewise)
-while (<CONFIG>)
+# modifies the global variable $config (a dictionary)
+# highly impure
+# uses the first command line argument or "/etc/multivpn.cfg" as conf file
+# needs no arguments
+sub parse_conf_file
 {
-    chomp($_);
-    s/\#.*$//gi;      # delete all comments
-    next if m,^\s*$,; # next if we're in a now deleted line
+    # open config file
+    open( my $conf_file, "<", $ARGV[0] || "/etc/multivpn.cfg" )
+    || die "Config file not found: " . $!;
 
-    my @config = split( /\t/, $_ );
-
-    if ( $config[0] && ( lc( $config[0] ) eq "link" ) )
+    # read and parse config file (linewise)
+    while (<$conf_file>)
     {
-        $config->{links}->{ $config[1] } = {
-            name    => $config[1],
-            src     => $config[2],
-            srcport => $config[3],
-            dstip   => $config[4] || undef,
-            dstport => $config[5] || undef,
-            factor  => $config[6],
+        chomp($_);
+        s/\#.*$//gi;      # delete all comments
+        next if m,^\s*$,; # next if we're in a now deleted line
 
-            lastdstip => $config[4] || undef,
-            options   => $config[7] || "",
-            curip     => "",
-        };
+        my @config = split( /\t/, $_ );
+
+        if ( $config[0] && ( lc( $config[0] ) eq "link" ) )
+        {
+            $config->{links}->{ $config[1] } = {
+                name    => $config[1],
+                src     => $config[2],
+                srcport => $config[3],
+                dstip   => $config[4] || undef,
+                dstport => $config[5] || undef,
+                factor  => $config[6],
+
+                lastdstip => $config[4] || undef,
+                options   => $config[7] || "",
+                curip     => "",
+            };
+        }
+        elsif ( $config[0] && ( lc( $config[0] ) eq "local" ) ) {
+            $config->{local} = {
+                ip             => $config[1],
+                subnet_size    => $config[2] || 24,
+                mtu            => $config[3] || 1300,
+                dstip          => $config[4],
+                options        => $config[5],
+            };
+        }
+        elsif ( $config[0] && ( lc( $config[0] ) eq "route" ) ) {
+            push(
+                @{ $config->{route} },
+                {
+                    to            => $config[1],
+                    subnet_size   => $config[2],
+                    gw            => $config[3],
+                    table         => $config[4],
+                    metric        => $config[5],
+                });
+        }
+        elsif (m,^\s*$,) {
+        }
+        else {
+            die "Bad config line: " . $_;
+        }
     }
-    elsif ( $config[0] && ( lc( $config[0] ) eq "local" ) ) {
-        $config->{local} = {
-            ip             => $config[1],
-            subnet_size    => $config[2] || 24,
-            mtu            => $config[3] || 1300,
-            dstip          => $config[4],
-            options        => $config[5],
-        };
-    }
-    elsif ( $config[0] && ( lc( $config[0] ) eq "route" ) ) {
-        push(
-            @{ $config->{route} },
-            {
-                to            => $config[1],
-                subnet_size   => $config[2],
-                gw            => $config[3],
-                table         => $config[4],
-                metric        => $config[5],
-            });
-    }
-    elsif (m,^\s*$,) {
-    }
-    else {
-        die "Bad config line: " . $_;
-    }
+    close($conf_file);
 }
-close(CONFIG);
 
 
 sub printDebug
@@ -528,6 +536,11 @@ sub startUDPSocket
         args => [$con],
     );
 }
+
+####### Section 1 END: Function Definitions #############
+
+parse_conf_file();
+
 
 # [Local IP Check Session]
 # Here to detect and handle local IP changes.
