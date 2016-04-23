@@ -112,7 +112,7 @@ my $printdebug = 0;
 
 $| = 1;                    # disable terminal output buffering
 my $looktime   = 5;
-my $nodeadpeer = 0;
+my $no_dead_peer = 0;
 my $up         = 0;
 
 my $tuntapsession = undef;
@@ -436,7 +436,7 @@ sub startUDPSocket
                         $curinput = decode_base64($curinput);
                     }
 
-                    if ( !$nodeadpeer && ( substr( $curinput, 0, 4 ) eq "SES:" ) )
+                    if ( !$no_dead_peer && ( substr( $curinput, 0, 4 ) eq "SES:" ) )
                     {
                         my $announcement = [ split( ":", $curinput ) ];
                         shift(@$announcement);
@@ -681,7 +681,7 @@ POE::Session->create(
                     { 
                         $sessions->{$sessid}->{tried} += ( 1 / $sessions->{$sessid}->{factor} );
                     }
-                    unless ( $nodeadpeer || $sessions->{$sessid}->{con}->{active} )
+                    unless ( $no_dead_peer || $sessions->{$sessid}->{con}->{active} )
                     { 
                         next;
                     }
