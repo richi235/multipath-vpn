@@ -226,7 +226,7 @@ If a IP change is detected the following is done:
 
 =item 2. It starts a new UDP socket on the new interface ( I<using startUDPSocket()> )
 
-=item 2. All the sessions are re-established 
+=item 2. All the sessions are re-established
 
 =back
 
@@ -259,7 +259,7 @@ sub handle_local_ip_change
         }
 
         if ($restart) {
-            if ($config->{links}->{$curlink}->{cursession}) { 
+            if ($config->{links}->{$curlink}->{cursession}) {
                 $poe_kernel->call($config->{links}->{$curlink}->{cursession} => "terminate" );
             }
             startUDPSocket($curlink);
@@ -268,7 +268,7 @@ sub handle_local_ip_change
             if ( $config->{links}->{$curlink}->{cursession}
               && ( $config->{links}->{$curlink}->{dstip}
                 || $config->{links}->{$curlink}->{lastdstip} ))
-            { 
+            {
                 $poe_kernel->post(
                     $config->{links}->{$curlink}->{cursession} => "send_through_udp" => "SES:"
                         . $curlink . ":"
@@ -297,7 +297,7 @@ Resets all routing table entries made by this programm.
 sub reset_routing_table
 {
     my $up = shift;
-    
+
     foreach my $curroute ( @{ $config->{route} } )
     {
         my $tmp =
@@ -309,7 +309,7 @@ sub reset_routing_table
             ? " metric " . $curroute->{metric}
             : ""
           ) . ( $curroute->{table} ? " table " . $curroute->{table} : "" );
-        
+
         print( $tmp. "\n");
         system($tmp);
 
@@ -350,7 +350,7 @@ sub startUDPSocket
 
                 my $bind  = ( $con->{options} =~ m,bind,i )  ? 1 : 0;
                 my $reuse = ( $con->{options} =~ m,reuse,i ) ? 1 : 0;
-                
+
                 print( "Bind: " . $bind . " Reuse:" . $reuse . " "
                   . ( $con->{dstip}   || "-" ) . ":"
                   . ( $con->{dstport} || "-" ) . "\n" );
@@ -416,14 +416,14 @@ sub startUDPSocket
                     $heap->{con}->{lastdstip}   = $heap->{udp_socket}->peerhost();
                     $heap->{con}->{lastdstport} = $heap->{udp_socket}->peerport();
 
-                    if ($printdebug) { 
+                    if ($printdebug) {
                         print("Incoming datagram from '" . length($curinput) . "' Bytes\n");
                     }
-                    
+
                     if ($doPrepend) {
                         substr( $curinput, 0, length($doPrepend), "" );
                     }
-                    
+
                     if ($doCrypt) {
                         my $replace = substr( $curinput, 0, 200, "" );
                         $replace = join( "",
@@ -446,7 +446,7 @@ sub startUDPSocket
                         $config->{$dstlink}->{lastdstport} = $heap->{con}->{lastdstport};
 
                         my $myseen = [];
-                        
+
                         if ( my $tmp = shift(@$announcement) ) {
                             $myseen = [ split( ",", $tmp ) ];
                         }
@@ -468,7 +468,7 @@ sub startUDPSocket
                           . join( ",", @$myseen ) . "\n" );
                     }
                     else {
-                        if ($tuntapsession) { 
+                        if ($tuntapsession) {
                             $kernel->call( $tuntapsession => "put_into_tun_device", $curinput );
                         }
                     }
@@ -528,7 +528,7 @@ sub startUDPSocket
             },
             terminate => sub {
                 my ( $kernel, $heap, $session ) = @_[ KERNEL, HEAP, SESSION ];
-                
+
                 print( "Socket terminated" . "\n" );
                 delete( $sessions->{ $session->ID() } );
 
@@ -626,8 +626,8 @@ POE::Session->create(
             $heap->{interface} = unpack STRUCT_IFREQ, $heap->{ifr};
 
             print( "Interface " . $heap->{interface} . " up!\n");
-            
-                  # regex check if the configured ip is an ip 
+
+                  # regex check if the configured ip is an ip
             if ( $config->{local}->{ip} =~ /^[\d\.]+$/ )
             {
                 system( "ifconfig "
@@ -641,14 +641,14 @@ POE::Session->create(
                 system( "brctl", "addif", $config->{local}->{ip}, $heap->{interface} );
             }
 
-            if (( $config->{local}->{dstip} )) { 
+            if (( $config->{local}->{dstip} )) {
                 system( "ifconfig "
                   . $heap->{interface}
                   . " dstaddr "
                   . $config->{local}->{dstip} );
             }
 
-            if (( $config->{local}->{mtu} )) { 
+            if (( $config->{local}->{mtu} )) {
                 system( "iptables -A FORWARD -o "
                   . $heap->{interface}
                   . " -p tcp -m tcp --tcp-flags SYN,RST SYN -m tcpmss --mss "
@@ -663,7 +663,7 @@ POE::Session->create(
         },
         got_packet_from_tun_device => sub {
             my ( $kernel, $heap, $socket ) = @_[ KERNEL, HEAP, ARG0 ];
-            
+
             if ( $socket != $heap->{tun_device} ) {
                 die();
             }
@@ -678,11 +678,11 @@ POE::Session->create(
                   )
                 {
                     if ($sessions->{$sessid}->{factor})
-                    { 
+                    {
                         $sessions->{$sessid}->{tried} += ( 1 / $sessions->{$sessid}->{factor} );
                     }
                     unless ( $no_dead_peer || $sessions->{$sessid}->{con}->{active} )
-                    { 
+                    {
                         next;
                     }
 
@@ -698,7 +698,7 @@ POE::Session->create(
             my $size = syswrite( $heap->{tun_device}, $buf );
 
             unless ( $size == length($buf) )
-            { 
+            {
                 print $size . " != " . length($buf) . "\n";
             }
         },
