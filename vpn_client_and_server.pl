@@ -125,7 +125,7 @@ my $lastseen = {};
 
 # open config file
 open( CONFIG, "<", $ARGV[0] || "/etc/multivpn.cfg" )
-  || die "Config not found: " . $!;
+  || die "Config file not found: " . $!;
 
 # read and parse config file (linewise)
 while (<CONFIG>)
