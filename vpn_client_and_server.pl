@@ -180,19 +180,6 @@ while (<CONFIG>)
 close(CONFIG);
 
 
-sub nagle(*;$)
-{
-    my $fh = shift;
-    if (shift) {
-        setsockopt( $fh, IPPROTO_TCP, TCP_NODELAY, 0 )
-          || print "Couldn't enable Nagle's algorithm: $!\n";
-    }
-    else {
-        setsockopt( $fh, IPPROTO_TCP, TCP_NODELAY, 1 )
-          || print "Couldn't disable Nagle's algorithm: $!\n";
-    }
-}
-
 sub printDebug
 {
     print "\n" . join(
