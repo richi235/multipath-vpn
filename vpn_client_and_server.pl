@@ -122,7 +122,7 @@ my $seen     = {};
 my $lastseen = {};
 
 my @interface_choosing_plan;
-my $interface_choosing_state = 0;   # current array index
+my $if_choosing_state = 0;   # current array index
 my $plan_length = 0;                # number of elements
 
 
@@ -719,11 +719,8 @@ POE::Session->create(
             my $buf = "";
             while ( sysread( $heap->{tun_device}, $buf , TUN_MAX_FRAME ) )
             {
-                foreach my $session_id (
-                    sort( {( $sessions->{$a}->{tried} || 0 )
-                          <=> ( $sessions->{$b}->{tried} || 0 ) }
-                      keys( %$sessions))
-                  )
+                my $iterations = 0;
+                while ($iterations < $plan_length)
                 {
                     # Problem: Was mache ich wenn aktuelles interface down ist?
                     #   • Dann muss ich ja zum nächsten interface gehen
@@ -750,16 +747,25 @@ POE::Session->create(
                     #            • In so fern wäre es auch echt sinnvoll, an der stelle dann den interface_plan zu aktualisieren
                     #              Ja, demnächst, eins nach dem anderen
 
+                    # We count the iterations to give up this inner loop in case we have already
+                    # tried all choosing plan slots.
+                    $iterations++;
 
-                    if ($sessions->{$session_id}->{factor})
-                    {
-                        $sessions->{$session_id}->{tried} += ( 1 / $sessions->{$session_id}->{factor} );
-                    }
-                    unless ( $no_dead_peer || $sessions->{$session_id}->{con}->{active} )
+                    # Move to the next slot in the interface choosing plan:
+                    $if_choosing_state = ($if_choosing_state + 1) % $plan_length;
+
+                    # Chose the session (and therefore interface) to use for this packet to send.
+                    # According to our static plan
+                    my $session_id = $interface_choosing_plan[$if_choosing_state];
+
+                    # Move to next plan slot if the interface of the choosen session is not active
+                    if ( ! ($sessions->{$session_id}->{con}->{active}) )
                     {
                         next;
                     }
 
+                    # All went well \o/
+                    # We're finally sending the packet
                     $kernel->call( $session_id, "send_through_udp", $buf );
                     last;
                 }
