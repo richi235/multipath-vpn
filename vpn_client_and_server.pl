@@ -295,7 +295,7 @@ sub reset_routing_table
 
     foreach my $current_route ( @{ $config->{route} } )
     {
-        my $tmp =
+        my $shell_command =
             "ip route delete "
           . $current_route->{to} . "/"
           . $current_route->{subnet_size}
@@ -305,10 +305,10 @@ sub reset_routing_table
             : ""
           ) . ( $current_route->{table} ? " table " . $current_route->{table} : "" );
 
-        print( $tmp. "\n");
-        system($tmp);
+        print( $shell_command. "\n");
+        system($shell_command);
 
-        $tmp =
+        $shell_command =
             "ip route "
           . ( $up ? "add" : "delete" ) . " "
           . $current_route->{to} . "/"
@@ -320,8 +320,8 @@ sub reset_routing_table
             : ""
           ) . ( $current_route->{table} ? " table " . $current_route->{table} : "" );
 
-        print( $tmp . "\n" );
-        system($tmp);
+        print( $shell_command . "\n" );
+        system($shell_command);
     }
 }
 
@@ -442,8 +442,8 @@ sub startUDPSocket
 
                         my $myseen = [];
 
-                        if ( my $tmp = shift(@$announcement) ) {
-                            $myseen = [ split( ",", $tmp ) ];
+                        if ( my $shell_command = shift(@$announcement) ) {
+                            $myseen = [ split( ",", $shell_command ) ];
                         }
 
                         $seen->{$dstlink} = scalar(@$myseen);
