@@ -192,6 +192,33 @@ sub parse_conf_file
     close($conf_file);
 }
 
+sub add_interface_to_plan
+{
+    my $session_id = shift;
+    my $factor     = shift;
+
+    # in case this call was wrong and the interface is already in the plan
+    remove_interface_from_plan($session_id);
+
+    push( @interface_choosing_plan, $session_id x $factor);
+}
+
+sub remove_interface_from_plan
+{
+    my $session_id = shift;
+
+    my @new_plan;
+
+    for (@interface_choosing_plan)
+    {
+        if ( $_ != $session_id ) {
+            push(@new_plan, $_);
+        }
+    }
+
+    @interface_choosing_plan = @new_plan;
+}
+
 
 sub printDebug
 {
