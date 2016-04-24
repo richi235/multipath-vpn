@@ -686,7 +686,7 @@ POE::Session->create(
                         next;
                     }
 
-                    $_[KERNEL]->call( $session_id => "send_through_udp" => $buf );
+                    $kernel->call( $session_id, "send_through_udp", $buf );
                     last;
                 }
             }
