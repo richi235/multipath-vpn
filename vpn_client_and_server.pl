@@ -410,6 +410,8 @@ sub startUDPSocket
                         con    => $con,
                     };
 
+                    add_interface_to_plan($heap->{sessionid}, $heap->{con}->{factor});
+
                     # select read registers a event to be called on read input on the socket
                     $kernel->select_read( $heap->{udp_socket}, "got_data_from_udp" );
 
@@ -433,6 +435,8 @@ sub startUDPSocket
                 my ( $kernel, $heap, $session ) = @_[ KERNEL, HEAP, SESSION ];
 
                 print( "Session term.\n");
+
+                remove_interface_from_plan( $session->ID() );
                 delete( $sessions->{ $session->ID() } );
             },
             got_data_from_udp => sub {
@@ -558,6 +562,8 @@ sub startUDPSocket
                 my ( $kernel, $heap, $session ) = @_[ KERNEL, HEAP, SESSION ];
 
                 print( "Socket terminated" . "\n" );
+
+                remove_interface_from_plan( $session->ID() );
                 delete( $sessions->{ $session->ID() } );
 
                 $kernel->select_read( $heap->{udp_socket} );
