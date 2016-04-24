@@ -293,17 +293,17 @@ sub reset_routing_table
 {
     my $up = shift;
 
-    foreach my $curroute ( @{ $config->{route} } )
+    foreach my $current_route ( @{ $config->{route} } )
     {
         my $tmp =
             "ip route delete "
-          . $curroute->{to} . "/"
-          . $curroute->{subnet_size}
+          . $current_route->{to} . "/"
+          . $current_route->{subnet_size}
           . (
-            defined( $curroute->{metric} )
-            ? " metric " . $curroute->{metric}
+            defined( $current_route->{metric} )
+            ? " metric " . $current_route->{metric}
             : ""
-          ) . ( $curroute->{table} ? " table " . $curroute->{table} : "" );
+          ) . ( $current_route->{table} ? " table " . $current_route->{table} : "" );
 
         print( $tmp. "\n");
         system($tmp);
@@ -311,14 +311,14 @@ sub reset_routing_table
         $tmp =
             "ip route "
           . ( $up ? "add" : "delete" ) . " "
-          . $curroute->{to} . "/"
-          . $curroute->{subnet_size} . " via "
-          . $curroute->{gw}
+          . $current_route->{to} . "/"
+          . $current_route->{subnet_size} . " via "
+          . $current_route->{gw}
           . (
-            defined( $curroute->{metric} )
-            ? " metric " . $curroute->{metric}
+            defined( $current_route->{metric} )
+            ? " metric " . $current_route->{metric}
             : ""
-          ) . ( $curroute->{table} ? " table " . $curroute->{table} : "" );
+          ) . ( $current_route->{table} ? " table " . $current_route->{table} : "" );
 
         print( $tmp . "\n" );
         system($tmp);
