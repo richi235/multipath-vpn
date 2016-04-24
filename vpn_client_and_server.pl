@@ -115,7 +115,7 @@ my $looktime   = 5;
 my $no_dead_peer = 0;
 my $up         = 0;
 
-my $tuntapsession = undef;
+my $tuntap_session = undef;
 
 my $config   = {};
 my $seen     = {};
@@ -463,8 +463,8 @@ sub startUDPSocket
                           . join( ",", @$myseen ) . "\n" );
                     }
                     else {
-                        if ($tuntapsession) {
-                            $kernel->call( $tuntapsession => "put_into_tun_device", $curinput );
+                        if ($tuntap_session) {
+                            $kernel->call( $tuntap_session => "put_into_tun_device", $curinput );
                         }
                     }
                 }
@@ -659,7 +659,7 @@ POE::Session->create(
             system( "ifconfig " . $heap->{interface} . " mtu " . $config->{local}->{mtu} );
 
             $kernel->select_read( $heap->{tun_device}, "got_packet_from_tun_device" );
-            $tuntapsession = $_[SESSION];
+            $tuntap_session = $_[SESSION];
         },
         got_packet_from_tun_device => sub {
             my ( $kernel, $heap, $socket ) = @_[ KERNEL, HEAP, ARG0 ];
