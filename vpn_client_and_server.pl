@@ -671,22 +671,22 @@ POE::Session->create(
             # read data from the tun device
             while ( sysread( $heap->{tun_device}, my $buf = "", TUN_MAX_FRAME ) )
             {
-                foreach my $sessid (
+                foreach my $session_id (
                     sort( {( $sessions->{$a}->{tried} || 0 )
                           <=> ( $sessions->{$b}->{tried} || 0 ) }
                       keys( %$sessions))
                   )
                 {
-                    if ($sessions->{$sessid}->{factor})
+                    if ($sessions->{$session_id}->{factor})
                     {
-                        $sessions->{$sessid}->{tried} += ( 1 / $sessions->{$sessid}->{factor} );
+                        $sessions->{$session_id}->{tried} += ( 1 / $sessions->{$session_id}->{factor} );
                     }
-                    unless ( $no_dead_peer || $sessions->{$sessid}->{con}->{active} )
+                    unless ( $no_dead_peer || $sessions->{$session_id}->{con}->{active} )
                     {
                         next;
                     }
 
-                    $_[KERNEL]->call( $sessid => "send_through_udp" => $buf );
+                    $_[KERNEL]->call( $session_id => "send_through_udp" => $buf );
                     last;
                 }
             }
