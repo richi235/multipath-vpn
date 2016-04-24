@@ -442,8 +442,8 @@ sub startUDPSocket
 
                         my $myseen = [];
 
-                        if ( my $shell_command = shift(@$announcement) ) {
-                            $myseen = [ split( ",", $shell_command ) ];
+                        if ( my $tmp = shift(@$announcement) ) {
+                            $myseen = [ split( ",", $tmp ) ];
                         }
 
                         $seen->{$dstlink} = scalar(@$myseen);
