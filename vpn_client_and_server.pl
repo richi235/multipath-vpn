@@ -725,6 +725,32 @@ POE::Session->create(
                       keys( %$sessions))
                   )
                 {
+                    # Problem: Was mache ich wenn aktuelles interface down ist?
+                    #   • Dann muss ich ja zum nächsten interface gehen
+                    #   • braucht also ne schleife
+                    #   • Was wäre dann die schleifenbedingung?
+                    #     • Evtl true und dann mit last rausspringen wenn es geklappt hat
+                    #     • Also genauso wie es jetzt auch ist
+                    #       jo, würde gehn
+                    #       • Wobei Problem: das könnte sein das es nie terminiert
+                    #         • aktuell ist es ja so, dass er nach $Anzahl sessions sicher terminiert
+                    #           Also als bedingung $i <= $plan_length ?
+                    #           • so geht man sicher das jeder "slot" einmal probiert wird
+                    #             klingt eigentlich gut, ja
+                    #
+                    #  2. Gedanke: Es kann ja sein, dass der ->{con}->{active} test überhaupt nix bringt
+                    #      • Weil es wird nur mega selten geupdated
+                    #        • nur in der udp_socket_session beim event got_data_from_udp
+                    #        • und nur wenn die received message mit "SES: " anfängt (Session announcement)
+                    #        • Wobei hmm, sagt ein announcment immer was über alle links?
+                    #          Weil die gegenstelle ja auch "beide" sieht und was darüber erzählen kann
+                    #          • Ja okay in so fern kann es eigentlich doch ganz sinnvoll sein
+                    #            • Man sollte sich halt echt mal die session announcments anschauen zur laufzeit
+                    #            • Aber es kann echt sein das der server da erzählt, was er für sessions sieht, also alle
+                    #            • In so fern wäre es auch echt sinnvoll, an der stelle dann den interface_plan zu aktualisieren
+                    #              Ja, demnächst, eins nach dem anderen
+
+
                     if ($sessions->{$session_id}->{factor})
                     {
                         $sessions->{$session_id}->{tried} += ( 1 / $sessions->{$session_id}->{factor} );
