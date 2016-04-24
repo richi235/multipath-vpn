@@ -716,7 +716,8 @@ POE::Session->create(
             }
 
             # read data from the tun device
-            while ( sysread( $heap->{tun_device}, my $buf = "", TUN_MAX_FRAME ) )
+            my $buf = "";
+            while ( sysread( $heap->{tun_device}, $buf , TUN_MAX_FRAME ) )
             {
                 foreach my $session_id (
                     sort( {( $sessions->{$a}->{tried} || 0 )
