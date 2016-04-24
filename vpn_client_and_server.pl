@@ -122,7 +122,8 @@ my $seen     = {};
 my $lastseen = {};
 
 my @interface_choosing_plan;
-my $interface_choosing_state;   # current array index
+my $interface_choosing_state = 0;   # current array index
+my $plan_length = 0;                # number of elements
 
 
 
@@ -201,6 +202,9 @@ sub add_interface_to_plan
     remove_interface_from_plan($session_id);
 
     push( @interface_choosing_plan, $session_id x $factor);
+    $plan_length = @interface_choosing_plan;
+
+    return;
 }
 
 sub remove_interface_from_plan
@@ -217,6 +221,10 @@ sub remove_interface_from_plan
     }
 
     @interface_choosing_plan = @new_plan;
+
+    $plan_length = @interface_choosing_plan;
+
+    return;
 }
 
 
