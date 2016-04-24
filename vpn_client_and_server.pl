@@ -302,8 +302,10 @@ sub reset_routing_table
           . (
             defined( $current_route->{metric} )
             ? " metric " . $current_route->{metric}
-            : ""
-          ) . ( $current_route->{table} ? " table " . $current_route->{table} : "" );
+            : "")
+          . ( $current_route->{table}
+              ? " table " . $current_route->{table} :
+              "" );
 
         print( $shell_command. "\n");
         system($shell_command);
@@ -314,11 +316,12 @@ sub reset_routing_table
           . $current_route->{to} . "/"
           . $current_route->{subnet_size} . " via "
           . $current_route->{gw}
-          . (
-            defined( $current_route->{metric} )
+          . ( defined( $current_route->{metric} )
             ? " metric " . $current_route->{metric}
-            : ""
-          ) . ( $current_route->{table} ? " table " . $current_route->{table} : "" );
+            : "")
+          . ( $current_route->{table}
+              ? " table " . $current_route->{table}
+              : "" );
 
         print( $shell_command . "\n" );
         system($shell_command);
