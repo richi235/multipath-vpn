@@ -121,6 +121,11 @@ my $config   = {};
 my $seen     = {};
 my $lastseen = {};
 
+my @interface_choosing_plan;
+my $interface_choosing_state;   # current array index
+
+
+
 ####### Section 1 START: Function Definitions #############
 
 
