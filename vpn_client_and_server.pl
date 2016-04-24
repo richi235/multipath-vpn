@@ -374,32 +374,30 @@ sub startUDPSocket
                     print "Not possible: " . $@ . "\n";
                     return;
                 }
-                else {
 
-                    if ( $heap->{udp_socket} ) {
-                        $heap->{sessionid} = $session->ID();
-                        $sessions->{ $heap->{sessionid} } = {
-                            heap   => $heap,
-                            factor => $heap->{con}->{factor},
-                            con    => $con,
-                        };
+                if ( $heap->{udp_socket} ) {
+                    $heap->{sessionid} = $session->ID();
+                    $sessions->{ $heap->{sessionid} } = {
+                        heap   => $heap,
+                        factor => $heap->{con}->{factor},
+                        con    => $con,
+                    };
 
-                        # select read registers a event to be called on read input on the socket
-                        $kernel->select_read( $heap->{udp_socket}, "got_data_from_udp" );
+                    # select read registers a event to be called on read input on the socket
+                    $kernel->select_read( $heap->{udp_socket}, "got_data_from_udp" );
 
-                        if ($bind) {
-                            unless ( defined( $heap->{udp_socket}->send("a") ) ) {
-                                print "PostBind not worked: " . $! . "\n";
-                            }
+                    if ($bind) {
+                        unless ( defined( $heap->{udp_socket}->send("a") ) ) {
+                            print "PostBind not worked: " . $! . "\n";
                         }
                     }
-                    else {
-                        my $retrytimeout = $config->{retrytimeout} || 30;
-                        print "Binding to "
-                          . $con->{curip} . ":"
-                          . $con->{srcport}
-                          . " not worked!\n";
-                    }
+                }
+                else {
+                    my $retrytimeout = $config->{retrytimeout} || 30;
+                    print "Binding to "
+                        . $con->{curip} . ":"
+                        . $con->{srcport}
+                        . " not worked!\n";
                 }
 
                 $con->{cursession} = $heap->{sessionid};
