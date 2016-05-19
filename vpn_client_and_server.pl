@@ -127,6 +127,11 @@ my $plan_length = 0;                # number of elements
 
 
 
+### Signal Handlers ###
+$SIG{INT} = sub { die "Caught a SIGINT Signal. Current Errno: $!" };
+
+
+
 ####### Section 1 START: Function Definitions #############
 
 
