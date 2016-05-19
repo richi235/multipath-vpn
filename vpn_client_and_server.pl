@@ -201,7 +201,7 @@ sub add_interface_to_plan
     # in case this call was wrong and the interface is already in the plan
     remove_interface_from_plan($session_id);
 
-    push( @interface_choosing_plan, $session_id x $factor);
+    push( @interface_choosing_plan, ($session_id) x $factor);
     $plan_length = @interface_choosing_plan;
 
     return;
