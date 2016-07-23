@@ -2,7 +2,7 @@
 
 nc 172.31.255.88 1337 < /dev/zero &
 
-sleep 60
+sleep 120
 kill $(jobs -p)
 
 exit
