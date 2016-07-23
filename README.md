@@ -1,4 +1,4 @@
-Multipath-VPN
+Reinhard-VPN
 =============
 
 A tunneling VPN client and server, which supports failover and multiple connections via the linux tuntap interface.
