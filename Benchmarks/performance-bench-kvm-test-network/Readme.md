@@ -34,3 +34,7 @@ Or in a better aranged format:
 ./reinhard-vpn/v3-50-50/nc-stats: | 1880673608
 ./reinhard-vpn/v2-50-50/nc-stats: | 1845849592
 ./reinhard-vpn/v1-30:30/nc-stats: | 1807243408
+
+### Subdirs
+This repo contains a subdirectory for each measurment where you can find the configurations used and the full
+netcat stat output.
