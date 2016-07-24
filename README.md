@@ -11,7 +11,7 @@ A tunneling VPN client and server, which supports failover and multiple connecti
 git clone https://github.com/richi235/multipath-vpn
 
 # installing the required perl modules:
-cpan POE::Wheel::UDP IO::Interface::Simple
+cpan POE::Wheel::UDP IO::Interface::Simple POE::XS::Loop::Poll
 
 # copy the config
 cp dynIpClient.example.cfg /etc/multivpn.cfg
@@ -23,7 +23,7 @@ Edit the config conforming to your network setup.
 git clone https://github.com/richi235/multipath-vpn
 
 # installing the required perl modules:
-cpan POE::Wheel::UDP IO::Interface::Simple
+cpan POE::Wheel::UDP IO::Interface::Simple POE::XS::Loop::Poll
 
 # copy the config
 cp serverStaticIP.example.cfg /etc/multivpn.cfg
