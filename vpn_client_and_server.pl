@@ -72,7 +72,7 @@ use warnings;
 use POE;
 use POE::Wheel::UDP;
 use POE
-  qw(Component::Server::TCP Component::Client::TCP Filter::Block Filter::Stream);
+  qw(Component::Server::TCP Component::Client::TCP Filter::Block XS::Loop::Poll Filter::Stream);
 
 use IO::File;
 use IO::Interface::Simple;
