@@ -4,7 +4,7 @@ A Multi-Hop link Aggregation VPN System.
 
 ## Properties 
 
- * Uses several internet uplinks for increased throughput and connection stability
+ * The client uses several internet uplinks to connect the server, for increased throughput and connection stability
  * Runs in Userspace, like OpenVPN
  * Currently Linux only
  * the ```vpn_client_and_server.pl``` program acts as client and server in one, depending on the configuration file
@@ -40,5 +40,7 @@ This is a fork of multipath-vpn. Main differences include:
   * Improved throughput performance (about 23% higher throughput for a given CPU, see [Reinhard-VPN/Benchmarks/performance-bench-kvm-test-network/](Reinhard-VPN/Benchmarks/performance-bench-kvm-test-network/
 ) for benchmarks.)
   * Reduction and better control of Packet Reordering
-  * Improved Code Quality and Doku coverage
+  * Improved Code Quality and Documentation coverage
 
+## Naming
+This Software is named after *Reinhard von Lohengram* from Ginga Eiyuu Densetsu.
