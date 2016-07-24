@@ -1,10 +1,15 @@
-Reinhard-VPN
-=============
+# Reinhard-VPN
 
-A tunneling VPN client and server, which supports failover and multiple connections via the linux tuntap interface.
+A Multi-Hop link Aggregation VPN System. 
 
+## Properties 
 
-## Install
+ * Uses several internet uplinks for increased throughput and connection stability
+ * Runs in Userspace, like OpenVPN
+ * Currently Linux only
+ * the ```vpn_client_and_server.pl``` program acts as client and server in one, depending on the configuration file
+
+## Installation
 
 ### On client
 ```bash
@@ -29,3 +34,11 @@ cpan POE::Wheel::UDP IO::Interface::Simple POE::XS::Loop::Poll
 cp serverStaticIP.example.cfg /etc/multivpn.cfg
 ```
 Edit the config conforming to your network setup.
+
+## About the fork
+This is a fork of multipath-vpn. Main differences include:
+  * Improved throughput performance (about 23% higher throughput for a given CPU, see [Reinhard-VPN/Benchmarks/performance-bench-kvm-test-network/](Reinhard-VPN/Benchmarks/performance-bench-kvm-test-network/
+) for benchmarks.)
+  * Reduction and better control of Packet Reordering
+  * Improved Code Quality and Doku coverage
+
