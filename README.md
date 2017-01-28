@@ -1,6 +1,7 @@
 # Reinhard-VPN
 
-A Multi-Hop link Aggregation VPN System. 
+A Multipath Tunneling VPN Client and Server. 
+Like OpenVPN, but with multiple links from Client to Server.
 
 ## Properties 
 
