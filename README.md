@@ -1,6 +1,6 @@
 # Reinhard-VPN
 
-A Multipath Tunneling VPN Client and Server. 
+A Multipath Tunneling VPN Client and Server.   
 Like OpenVPN, but with multiple links from Client to Server.
 
 ## Properties 
