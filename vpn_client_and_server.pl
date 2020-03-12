@@ -122,8 +122,8 @@ my $config   = {};
 my $seen     = {};
 my $lastseen = {};
 
-my @interface_choosing_plan;
-my $if_choosing_state = 0;   # current array index
+my @subtunnel_choosing_plan;
+my $subtun_choosing_state = 0;   # current array index
 my $plan_length = 0;                # number of elements
 
 
@@ -199,36 +199,36 @@ sub parse_conf_file
     close($conf_file);
 }
 
-sub add_interface_to_plan
+sub add_subtunnel_to_plan
 {
     my $session_id = shift;
     my $factor     = shift;
 
     # in case this call was wrong and the interface is already in the plan
-    remove_interface_from_plan($session_id);
+    remove_subtennel_from_plan($session_id);
 
-    push( @interface_choosing_plan, ($session_id) x $factor);
-    $plan_length = @interface_choosing_plan;
+    push( @subtunnel_choosing_plan, ($session_id) x $factor);
+    $plan_length = @subtunnel_choosing_plan;
 
     return;
 }
 
-sub remove_interface_from_plan
+sub remove_subtennel_from_plan
 {
     my $session_id = shift;
 
     my @new_plan;
 
-    for (@interface_choosing_plan)
+    for (@subtunnel_choosing_plan)
     {
         if ( $_ != $session_id ) {
             push(@new_plan, $_);
         }
     }
 
-    @interface_choosing_plan = @new_plan;
+    @subtunnel_choosing_plan = @new_plan;
 
-    $plan_length = @interface_choosing_plan;
+    $plan_length = @subtunnel_choosing_plan;
 
     return;
 }
@@ -419,11 +419,11 @@ sub schedule_and_send_through_subtunnel
             $iterations++;
 
             # Move to the next slot in the interface choosing plan:
-            $if_choosing_state = ($if_choosing_state + 1) % $plan_length;
+            $subtun_choosing_state = ($subtun_choosing_state + 1) % $plan_length;
 
             # Chose the session (and therefore interface) to use for this packet to send.
             # According to our static plan
-            my $session_id = $interface_choosing_plan[$if_choosing_state];
+            my $session_id = $subtunnel_choosing_plan[$subtun_choosing_state];
 
             # Move to next plan slot if the interface of the choosen session is not active
             if ( ! ($sessions->{$session_id}->{con}->{active}) )
@@ -520,6 +520,64 @@ sub start_tun_session
     $tuntap_session = $_[SESSION];
 }
 
+sub udp_sock_session_start
+{
+    my ( $kernel, $heap, $session, $con ) = @_[ KERNEL, HEAP, SESSION, ARG0 ];
+    $heap->{con} = $con;
+
+    my $bind  = ( $con->{options} =~ m,bind,i )  ? 1 : 0;
+    my $reuse = ( $con->{options} =~ m,reuse,i ) ? 1 : 0;
+
+    print( "Bind: " . $bind . " Reuse:" . $reuse . " "
+        . ( $con->{dstip}   || "-" ) . ":"
+        . ( $con->{dstport} || "-" ) . "\n" );
+
+    eval {
+        $heap->{udp_socket} = new IO::Socket::INET(
+            PeerAddr  => $bind ? $con->{dstip}   : undef,
+            PeerPort  => $bind ? $con->{dstport} : undef,
+            LocalAddr => $con->{curip},
+            LocalPort => $con->{srcport},
+            ReuseAddr => $reuse ? 1 : 0,
+            Proto     => 'udp',
+        ) or die "ERROR in Socket Creation : $!\n";
+    };
+
+    # if the previous eval produced an error
+    if ($@) {
+        print "Not possible: " . $@ . "\n";
+        return;
+    }
+
+    if ( $heap->{udp_socket} ) {
+        $heap->{sessionid} = $session->ID();
+        $sessions->{ $heap->{sessionid} } = {
+            heap   => $heap,
+            factor => $heap->{con}->{factor},
+            con    => $con,
+        };
+
+        add_subtunnel_to_plan($heap->{sessionid}, $heap->{con}->{factor});
+
+        # select read registers a event to be called on read input on the socket
+        $kernel->select_read( $heap->{udp_socket}, "got_data_from_udp" );
+
+        if ($bind) {
+            unless ( defined( $heap->{udp_socket}->send("a") ) ) {
+                print "PostBind not worked: " . $! . "\n";
+            }
+        }
+    }
+    else {
+        my $retrytimeout = $config->{retrytimeout} || 30;
+        print "Binding to "
+            . $con->{curip} . ":"
+            . $con->{srcport}
+            . " not worked!\n";
+    }
+
+    $con->{cursession} = $heap->{sessionid};
+}
 
 # creates a new POE Session and does some other things
 sub startUDPSocket
@@ -535,69 +593,13 @@ sub startUDPSocket
     # unique for each link
     POE::Session->create(
         inline_states => {
-            _start => sub {
-                my ( $kernel, $heap, $session, $con ) = @_[ KERNEL, HEAP, SESSION, ARG0 ];
-                $heap->{con} = $con;
-
-                my $bind  = ( $con->{options} =~ m,bind,i )  ? 1 : 0;
-                my $reuse = ( $con->{options} =~ m,reuse,i ) ? 1 : 0;
-
-                print( "Bind: " . $bind . " Reuse:" . $reuse . " "
-                  . ( $con->{dstip}   || "-" ) . ":"
-                  . ( $con->{dstport} || "-" ) . "\n" );
-
-                eval {
-                    $heap->{udp_socket} = new IO::Socket::INET(
-                        PeerAddr  => $bind ? $con->{dstip}   : undef,
-                        PeerPort  => $bind ? $con->{dstport} : undef,
-                        LocalAddr => $con->{curip},
-                        LocalPort => $con->{srcport},
-                        ReuseAddr => $reuse ? 1 : 0,
-                        Proto     => 'udp',
-                    ) or die "ERROR in Socket Creation : $!\n";
-                };
-
-                # if the previous eval produced an error
-                if ($@) {
-                    print "Not possible: " . $@ . "\n";
-                    return;
-                }
-
-                if ( $heap->{udp_socket} ) {
-                    $heap->{sessionid} = $session->ID();
-                    $sessions->{ $heap->{sessionid} } = {
-                        heap   => $heap,
-                        factor => $heap->{con}->{factor},
-                        con    => $con,
-                    };
-
-                    add_interface_to_plan($heap->{sessionid}, $heap->{con}->{factor});
-
-                    # select read registers a event to be called on read input on the socket
-                    $kernel->select_read( $heap->{udp_socket}, "got_data_from_udp" );
-
-                    if ($bind) {
-                        unless ( defined( $heap->{udp_socket}->send("a") ) ) {
-                            print "PostBind not worked: " . $! . "\n";
-                        }
-                    }
-                }
-                else {
-                    my $retrytimeout = $config->{retrytimeout} || 30;
-                    print "Binding to "
-                        . $con->{curip} . ":"
-                        . $con->{srcport}
-                        . " not worked!\n";
-                }
-
-                $con->{cursession} = $heap->{sessionid};
-            },
+            _start => \&udp_sock_session_start,
             _stop => sub {
                 my ( $kernel, $heap, $session ) = @_[ KERNEL, HEAP, SESSION ];
 
                 print( "Session term.\n");
 
-                remove_interface_from_plan( $session->ID() );
+                remove_subtennel_from_plan( $session->ID() );
                 delete( $sessions->{ $session->ID() } );
             },
             got_data_from_udp => sub {
@@ -724,7 +726,7 @@ sub startUDPSocket
 
                 print( "Socket terminated" . "\n" );
 
-                remove_interface_from_plan( $session->ID() );
+                remove_subtennel_from_plan( $session->ID() );
                 delete( $sessions->{ $session->ID() } );
 
                 $kernel->select_read( $heap->{udp_socket} );
