@@ -79,6 +79,7 @@ use IO::File;
 use IO::Interface::Simple;
 use IO::Socket::INET;
 use IO::Socket;
+use Socket;
 
 use Socket qw(IPPROTO_TCP TCP_NODELAY);
 use Time::HiRes qw/gettimeofday tv_interval/;
@@ -87,14 +88,14 @@ use MIME::Base64;
 # Constants
 use constant TUN_MAX_FRAME => 4096;
 
-# Ioctl defines
+## Ioctl defines
 use constant TUNSETNOCSUM  => 0x400454c8;
 use constant TUNSETDEBUG   => 0x400454c9;
 use constant TUNSETIFF     => 0x400454ca;
 use constant TUNSETPERSIST => 0x400454cb;
 use constant TUNSETOWNER   => 0x400454cc;
 
-# TUNSETIFF if_init_request flags
+## TUNSETIFF if_init_request flags
 use constant IFF_TUN       => 0x0001;
 use constant IFF_TAP       => 0x0002;
 use constant IFF_NO_PI     => 0x1000;
@@ -103,6 +104,11 @@ use constant TUN_PKT_STRIP => 0x0001;
 
 use constant STRUCT_IFREQ  => 'Z16 s';
 use constant TUNNEL_DEVICE => '/dev/net/tun';
+
+## Constants for DCCP
+use constant SOCK_DCCP      =>  6;
+use constant IPPROTO_DCCP   => 33;
+
 
 # Global Variables
 my $sessions   = {};
@@ -374,7 +380,7 @@ sub reset_routing_table
     }
 }
 
-sub schedule_and_send_through_tunnel
+sub tunnel_send
 {
     my ( $kernel, $heap, $socket ) = @_[ KERNEL, HEAP, ARG0 ];
 
@@ -402,7 +408,7 @@ sub schedule_and_send_through_tunnel
             #           • so geht man sicher das jeder "slot" einmal probiert wird
             #             klingt eigentlich gut, ja
             #
-            #  2. Gedanke: Es kann ja sein, dass der ->{con}->{active} test überhaupt nix bringt
+            #  2. Gedanke: Es kann ja sein, dass der ->{subtun}->{active} test überhaupt nix bringt
             #      • Weil es wird nur mega selten geupdated
             #        • nur in der udp_socket_session beim event got_data_from_udp
             #        • und nur wenn die received message mit "SES: " anfängt (Session announcement)
@@ -426,7 +432,7 @@ sub schedule_and_send_through_tunnel
             my $session_id = $subtunnel_choosing_plan[$subtun_choosing_state];
 
             # Move to next plan slot if the interface of the choosen session is not active
-            if ( ! ($sessions->{$session_id}->{con}->{active}) )
+            if ( ! ($sessions->{$session_id}->{subtun}->{active}) )
             {
                 next;
             }
@@ -520,10 +526,10 @@ sub start_tun_session
     $tuntap_session = $_[SESSION];
 }
 
-sub udp_sock_session_start
+sub udp_subtun_session_start
 {
     my ( $kernel, $heap, $session, $con ) = @_[ KERNEL, HEAP, SESSION, ARG0 ];
-    $heap->{con} = $con;
+    $heap->{subtun} = $con;
 
     my $bind  = ( $con->{options} =~ m,bind,i )  ? 1 : 0;
     my $reuse = ( $con->{options} =~ m,reuse,i ) ? 1 : 0;
@@ -553,11 +559,11 @@ sub udp_sock_session_start
         $heap->{sessionid} = $session->ID();
         $sessions->{ $heap->{sessionid} } = {
             heap   => $heap,
-            factor => $heap->{con}->{factor},
+            factor => $heap->{subtun}->{factor},
             con    => $con,
         };
 
-        add_subtunnel_to_plan($heap->{sessionid}, $heap->{con}->{factor});
+        add_subtunnel_to_plan($heap->{sessionid}, $heap->{subtun}->{factor});
 
         # select read registers a event to be called on read input on the socket
         $kernel->select_read( $heap->{subtun_socket}, "got_data_from_udp" );
@@ -578,15 +584,17 @@ sub udp_sock_session_start
 
     $con->{cursession} = $heap->{sessionid};
 }
-sub receive_from_udp_subtun
+
+# This function is L4 protocol (udp, dccp, tcp) independent
+sub receive_from_subtun
 {
     my ( $kernel, $heap, $session ) = @_[ KERNEL, HEAP, SESSION ];
 
     my $curinput = undef;
     while ( defined( $heap->{subtun_socket}->recv( $curinput, 1600 ) ) )
     {
-        $heap->{con}->{lastdstip}   = $heap->{subtun_socket}->peerhost();
-        $heap->{con}->{lastdstport} = $heap->{subtun_socket}->peerport();
+        $heap->{subtun}->{lastdstip}   = $heap->{subtun_socket}->peerhost();
+        $heap->{subtun}->{lastdstport} = $heap->{subtun_socket}->peerport();
 
         if ($printdebug) {
             print("Incoming datagram from '" . length($curinput) . "' Bytes\n");
@@ -608,14 +616,15 @@ sub receive_from_udp_subtun
             $curinput = decode_base64($curinput);
         }
 
+        # SubTunnel bookkeeping and controling (if connection problem or IP change)
         if ( !$no_dead_peer && ( substr( $curinput, 0, 4 ) eq "SES:" ) )
         {
             my $announcement = [ split( ":", $curinput ) ];
             shift(@$announcement);
             my $dstlink = shift(@$announcement);
 
-            $config->{$dstlink}->{lastdstip} = $heap->{con}->{lastdstip};
-            $config->{$dstlink}->{lastdstport} = $heap->{con}->{lastdstport};
+            $config->{$dstlink}->{lastdstip} = $heap->{subtun}->{lastdstip};
+            $config->{$dstlink}->{lastdstport} = $heap->{subtun}->{lastdstport};
 
             my $myseen = [];
 
@@ -647,6 +656,18 @@ sub receive_from_udp_subtun
     }
 }
 
+sub create_dccp_listen_socket
+{
+    socket(my $listen_sock, PF_INET, SOCK_DCCP, IPPROTO_DCCP)
+        or die "Can't open socket $!\n";
+
+#    bind( $listen_sock, pack_sockaddr_in($port, inet_aton($server)))
+#        or die "Can't bind to port $port! \n";
+
+    listen($listen_sock, 5) or die "listen: $!";
+}
+
+
 # This is a generic function: Working with all kinds of subtunnels (udp, dccp, etc.)
 # It does the following things:
 #   1. it constructs the destination socket address (ip, port). This isnt as
@@ -661,24 +682,24 @@ sub send_through_subtun
     my ( $kernel, $heap, $input ) = @_[ KERNEL, HEAP, ARG0 ];
 
     my $dst_sockaddr = undef;
-    if ( $heap->{con}->{dstip} && $heap->{con}->{dstport} ) {
-        if ( my $dstip = inet_aton( $heap->{con}->{dstip} ) ) {
-            $dst_sockaddr = pack_sockaddr_in( $heap->{con}->{dstport}, $dstip );
+    if ( $heap->{subtun}->{dstip} && $heap->{subtun}->{dstport} ) {
+        if ( my $dstip = inet_aton( $heap->{subtun}->{dstip} ) ) {
+            $dst_sockaddr = pack_sockaddr_in( $heap->{subtun}->{dstport}, $dstip );
         }
         else {
-            print( "Unable to reslove " . $heap->{con}->{dstip} . "\n");
+            print( "Unable to reslove " . $heap->{subtun}->{dstip} . "\n");
         }
     }
-    elsif ($heap->{con}->{lastdstip}
-        && $heap->{con}->{lastdstport} )
+    elsif ($heap->{subtun}->{lastdstip}
+        && $heap->{subtun}->{lastdstport} )
     {
-        if ( my $dstip = inet_aton( $heap->{con}->{lastdstip} ) ) {
-            $dst_sockaddr = pack_sockaddr_in( $heap->{con}->{lastdstport},
-                inet_aton( $heap->{con}->{lastdstip} ) );
+        if ( my $dstip = inet_aton( $heap->{subtun}->{lastdstip} ) ) {
+            $dst_sockaddr = pack_sockaddr_in( $heap->{subtun}->{lastdstport},
+                inet_aton( $heap->{subtun}->{lastdstip} ) );
         }
         else {
             print "Unable to reslove "
-                . $heap->{con}->{lastdstip} . "\n";
+                . $heap->{subtun}->{lastdstip} . "\n";
         }
     }
 
@@ -712,7 +733,7 @@ sub send_through_subtun
         }
     }
     else {
-        print( $heap->{con}->{name} . ": Cannot send: no dst ip/port.\n");
+        print( $heap->{subtun}->{name} . ": Cannot send: no dst ip/port.\n");
     }
 }
 
@@ -730,7 +751,7 @@ sub setup_udp_subtunnel
     # unique for each link
     POE::Session->create(
         inline_states => {
-            _start => \&udp_sock_session_start,
+            _start => \&udp_subtun_session_start,
             _stop => sub {
                 my ( $kernel, $heap, $session ) = @_[ KERNEL, HEAP, SESSION ];
 
@@ -739,7 +760,7 @@ sub setup_udp_subtunnel
                 remove_subtunnel_from_plan( $session->ID() );
                 delete( $sessions->{ $session->ID() } );
             },
-            got_data_from_udp => \&receive_from_udp_subtun,
+            got_data_from_udp => \&receive_from_subtun,
             send_through_udp => \&send_through_subtun,
             terminate => sub {
                 my ( $kernel, $heap, $session ) = @_[ KERNEL, HEAP, SESSION ];
@@ -828,7 +849,7 @@ POE::Session->create(
 POE::Session->create(
     inline_states => {
         _start => \&start_tun_session,
-        got_packet_from_tun_device => \&schedule_and_send_through_tunnel,
+        got_packet_from_tun_device => \&tunnel_send,
         put_into_tun_device => sub {
             my ( $kernel, $heap, $buf ) = @_[ KERNEL, HEAP, ARG0 ];
 
