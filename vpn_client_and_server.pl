@@ -647,7 +647,16 @@ sub receive_from_udp_subtun
     }
 }
 
-sub send_through_udp_subtun
+# This is a generic function: Working with all kinds of subtunnels (udp, dccp, etc.)
+# It does the following things:
+#   1. it constructs the destination socket address (ip, port). This isnt as
+#      simple as one might think because of the following. Reinhard VPN
+#      Supports servers and clients changing IPs, so getting the current
+#      IP to use requires some checks. Maybe this should happen in a seperate function
+#      and not with every send but well, this is how it is currently.
+#   2. Fancy extra stuff like: Base64 encoding, additionall "encrytion", or prepending stuff
+#   3. The actual sending
+sub send_through_subtun
 {
     my ( $kernel, $heap, $input ) = @_[ KERNEL, HEAP, ARG0 ];
 
@@ -731,7 +740,7 @@ sub setup_udp_subtunnel
                 delete( $sessions->{ $session->ID() } );
             },
             got_data_from_udp => \&receive_from_udp_subtun,
-            send_through_udp => send_through_udp_subtun,
+            send_through_udp => \&send_through_subtun,
             terminate => sub {
                 my ( $kernel, $heap, $session ) = @_[ KERNEL, HEAP, SESSION ];
 
