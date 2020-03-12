@@ -601,12 +601,12 @@ parse_conf_file();
 POE::Session->create(
     inline_states => {
         _start => sub {
-            my ( $kernel, $heap ) = @_[ KERNEL, HEAP ];
+            my  $kernel = $_[ KERNEL ];
 
             $kernel->yield("loop");
         },
         loop => sub {
-            my ( $kernel, $heap ) = @_[ KERNEL, HEAP ];
+            my $kernel  = $_[ KERNEL];
 
             handle_local_ip_change();
             $kernel->delay( loop => 1 );
@@ -621,11 +621,11 @@ POE::Session->create(
 POE::Session->create(
     inline_states => {
         _start => sub {
-            my ( $kernel, $heap ) = @_[ KERNEL, HEAP ];
+            my $kernel = $_[ KERNEL ];
             $kernel->yield("loop");
         },
         loop => sub {
-            my ( $kernel, $heap ) = @_[ KERNEL, HEAP ];
+            my $kernel = $_[ KERNEL];
 
             $lastseen = $seen;
 
