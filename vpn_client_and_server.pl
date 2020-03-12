@@ -94,7 +94,7 @@ use constant TUNSETIFF     => 0x400454ca;
 use constant TUNSETPERSIST => 0x400454cb;
 use constant TUNSETOWNER   => 0x400454cc;
 
-# TUNSETIFF ifr flags
+# TUNSETIFF if_init_request flags
 use constant IFF_TUN       => 0x0001;
 use constant IFF_TAP       => 0x0002;
 use constant IFF_NO_PI     => 0x1000;
@@ -373,6 +373,153 @@ sub reset_routing_table
         system($shell_command);
     }
 }
+
+sub schedule_and_send_through_subtunnel
+{
+    my ( $kernel, $heap, $socket ) = @_[ KERNEL, HEAP, ARG0 ];
+
+    if ( $socket != $heap->{tun_device} ) {
+        die();
+    }
+
+    # read data from the tun device
+    my $buf = "";
+    while ( sysread( $heap->{tun_device}, $buf , TUN_MAX_FRAME ) )
+    {
+        my $iterations = 0;
+        while ($iterations < $plan_length)
+        {
+            # Problem: Was mache ich wenn aktuelles interface down ist?
+            #   • Dann muss ich ja zum nächsten interface gehen
+            #   • braucht also ne schleife
+            #   • Was wäre dann die schleifenbedingung?
+            #     • Evtl true und dann mit last rausspringen wenn es geklappt hat
+            #     • Also genauso wie es jetzt auch ist
+            #       jo, würde gehn
+            #       • Wobei Problem: das könnte sein das es nie terminiert
+            #         • aktuell ist es ja so, dass er nach $Anzahl sessions sicher terminiert
+            #           Also als bedingung $i <= $plan_length ?
+            #           • so geht man sicher das jeder "slot" einmal probiert wird
+            #             klingt eigentlich gut, ja
+            #
+            #  2. Gedanke: Es kann ja sein, dass der ->{con}->{active} test überhaupt nix bringt
+            #      • Weil es wird nur mega selten geupdated
+            #        • nur in der udp_socket_session beim event got_data_from_udp
+            #        • und nur wenn die received message mit "SES: " anfängt (Session announcement)
+            #        • Wobei hmm, sagt ein announcment immer was über alle links?
+            #          Weil die gegenstelle ja auch "beide" sieht und was darüber erzählen kann
+            #          • Ja okay in so fern kann es eigentlich doch ganz sinnvoll sein
+            #            • Man sollte sich halt echt mal die session announcments anschauen zur laufzeit
+            #            • Aber es kann echt sein das der server da erzählt, was er für sessions sieht, also alle
+            #            • In so fern wäre es auch echt sinnvoll, an der stelle dann den interface_plan zu aktualisieren
+            #              Ja, demnächst, eins nach dem anderen
+
+            # We count the iterations to give up this inner loop in case we have already
+            # tried all choosing plan slots.
+            $iterations++;
+
+            # Move to the next slot in the interface choosing plan:
+            $if_choosing_state = ($if_choosing_state + 1) % $plan_length;
+
+            # Chose the session (and therefore interface) to use for this packet to send.
+            # According to our static plan
+            my $session_id = $interface_choosing_plan[$if_choosing_state];
+
+            # Move to next plan slot if the interface of the choosen session is not active
+            if ( ! ($sessions->{$session_id}->{con}->{active}) )
+            {
+                next;
+            }
+
+            # All went well \o/
+            # We're finally sending the packet
+            $kernel->call( $session_id, "send_through_udp", $buf );
+            last;
+        }
+    }
+}
+
+sub create_tun_interface
+{
+    my $heap = shift;
+
+    my $dotun =
+        (      ( $config->{local}->{ip} =~ /^[\d\.]+$/ )
+               && ( $config->{local}->{options} !~ /tap/ ) ) ? 1 : 0;
+
+    $heap->{tun_device} = new IO::File( TUNNEL_DEVICE, 'r+' )
+        or die "Can't open " . TUNNEL_DEVICE . ": $!";
+
+    my $if_init_request = pack( STRUCT_IFREQ,
+                         $dotun ? 'tun%d' : 'tap%d',
+                         $dotun ? IFF_TUN : IFF_TAP );
+
+    ioctl($heap->{tun_device}, TUNSETIFF, $if_init_request)
+        or die "Can't ioctl() tunnel: $!";
+
+    $heap->{tun_if_name} = unpack(STRUCT_IFREQ, $if_init_request);
+    print( "Interface " . $heap->{tun_if_name} . " up!\n");
+}
+
+# This: (via ifconfig and iptables commands)
+#   1. gives the tun interface an ip and defines it's subnet
+#   2. ( if necesarry:  makes it part of a bridge or defines point2point interface)
+#   3. configures pmtu clamping (via iptables)
+#   4. configures the interface mtu
+sub config_tun_interface
+{
+    my $heap = shift;
+
+    # Set ip and subnet on our tun/tap interface
+    if ( $config->{local}->{ip} =~ /^[\d\.]+$/ )  # regex check if the configured subtunnel source ip is an valid ip
+    {
+        system( "ifconfig "
+                . $heap->{tun_if_name} . " "
+                . $config->{local}->{ip} . "/"
+                . $config->{local}->{subnet_size}
+                . " up" );
+    }
+    else {
+    # if not do something obscure with bridge interfaces
+        system( "ifconfig " . $heap->{tun_if_name} . " up" );
+        system( "brctl", "addif", $config->{local}->{ip}, $heap->{tun_if_name} );
+    }
+
+    if (( $config->{local}->{dstip} )) {
+        system( "ifconfig "
+            . $heap->{tun_if_name}
+            . " dstaddr "
+            . $config->{local}->{dstip} );
+        # From ifconfig doc:   dstaddr addr
+        #     Set the remote IP address for a point-to-point link (such as PPP).
+        # This keyword is now obsolete; use the pointopoint keyword instead.
+    }
+
+    # Set PMTU Clamping
+    if (( $config->{local}->{mtu} )) {
+        system( "iptables -A FORWARD -o "
+            . $heap->{tun_if_name}
+            . " -p tcp -m tcp --tcp-flags SYN,RST SYN -m tcpmss --mss "
+            . ( $config->{local}->{mtu} - 40 )
+            . ":65495 -j TCPMSS --clamp-mss-to-pmtu" );
+    }
+
+    # Set MTU
+    system( "ifconfig " . $heap->{tun_if_name} . " mtu " . $config->{local}->{mtu} );
+
+}
+
+sub start_tun_session
+{
+    my ( $kernel, $heap ) = @_[ KERNEL, HEAP ];
+
+    create_tun_interface($heap);
+    config_tun_interface($heap);
+
+    $kernel->select_read( $heap->{tun_device}, "got_packet_from_tun_device" );
+    $tuntap_session = $_[SESSION];
+}
+
 
 # creates a new POE Session and does some other things
 sub startUDPSocket
@@ -658,125 +805,8 @@ POE::Session->create(
 ## possibly setting an interface and corresponding rules
 POE::Session->create(
     inline_states => {
-        _start => sub {
-            my ( $kernel, $heap ) = @_[ KERNEL, HEAP ];
-
-            my $dotun =
-              (      ( $config->{local}->{ip} =~ /^[\d\.]+$/ )
-                  && ( $config->{local}->{options} !~ /tap/ ) ) ? 1 : 0;
-
-            # this creates the tun device
-            $heap->{tun_device} = new IO::File( TUNNEL_DEVICE, 'r+' )
-              or die "Can't open " . TUNNEL_DEVICE . ": $!";
-
-            $heap->{ifr} = pack( STRUCT_IFREQ,
-                $dotun ? 'tun%d' : 'tap%d',
-                $dotun ? IFF_TUN : IFF_TAP );
-
-            ioctl $heap->{tun_device}, TUNSETIFF, $heap->{ifr}
-              or die "Can't ioctl() tunnel: $!";
-
-            $heap->{interface} = unpack STRUCT_IFREQ, $heap->{ifr};
-
-            print( "Interface " . $heap->{interface} . " up!\n");
-
-                  # regex check if the configured ip is an ip
-            if ( $config->{local}->{ip} =~ /^[\d\.]+$/ )
-            {
-                system( "ifconfig "
-                      . $heap->{interface} . " "
-                      . $config->{local}->{ip} . "/"
-                      . $config->{local}->{subnet_size}
-                      . " up" );
-            }
-            else {    # if not do something obscure with bridge interfaces
-                system( "ifconfig " . $heap->{interface} . " up" );
-                system( "brctl", "addif", $config->{local}->{ip}, $heap->{interface} );
-            }
-
-            if (( $config->{local}->{dstip} )) {
-                system( "ifconfig "
-                  . $heap->{interface}
-                  . " dstaddr "
-                  . $config->{local}->{dstip} );
-            }
-
-            if (( $config->{local}->{mtu} )) {
-                system( "iptables -A FORWARD -o "
-                  . $heap->{interface}
-                  . " -p tcp -m tcp --tcp-flags SYN,RST SYN -m tcpmss --mss "
-                  . ( $config->{local}->{mtu} - 40 )
-                  . ":65495 -j TCPMSS --clamp-mss-to-pmtu" );
-            }
-
-            system( "ifconfig " . $heap->{interface} . " mtu " . $config->{local}->{mtu} );
-
-            $kernel->select_read( $heap->{tun_device}, "got_packet_from_tun_device" );
-            $tuntap_session = $_[SESSION];
-        },
-        got_packet_from_tun_device => sub {
-            my ( $kernel, $heap, $socket ) = @_[ KERNEL, HEAP, ARG0 ];
-
-            if ( $socket != $heap->{tun_device} ) {
-                die();
-            }
-
-            # read data from the tun device
-            my $buf = "";
-            while ( sysread( $heap->{tun_device}, $buf , TUN_MAX_FRAME ) )
-            {
-                my $iterations = 0;
-                while ($iterations < $plan_length)
-                {
-                    # Problem: Was mache ich wenn aktuelles interface down ist?
-                    #   • Dann muss ich ja zum nächsten interface gehen
-                    #   • braucht also ne schleife
-                    #   • Was wäre dann die schleifenbedingung?
-                    #     • Evtl true und dann mit last rausspringen wenn es geklappt hat
-                    #     • Also genauso wie es jetzt auch ist
-                    #       jo, würde gehn
-                    #       • Wobei Problem: das könnte sein das es nie terminiert
-                    #         • aktuell ist es ja so, dass er nach $Anzahl sessions sicher terminiert
-                    #           Also als bedingung $i <= $plan_length ?
-                    #           • so geht man sicher das jeder "slot" einmal probiert wird
-                    #             klingt eigentlich gut, ja
-                    #
-                    #  2. Gedanke: Es kann ja sein, dass der ->{con}->{active} test überhaupt nix bringt
-                    #      • Weil es wird nur mega selten geupdated
-                    #        • nur in der udp_socket_session beim event got_data_from_udp
-                    #        • und nur wenn die received message mit "SES: " anfängt (Session announcement)
-                    #        • Wobei hmm, sagt ein announcment immer was über alle links?
-                    #          Weil die gegenstelle ja auch "beide" sieht und was darüber erzählen kann
-                    #          • Ja okay in so fern kann es eigentlich doch ganz sinnvoll sein
-                    #            • Man sollte sich halt echt mal die session announcments anschauen zur laufzeit
-                    #            • Aber es kann echt sein das der server da erzählt, was er für sessions sieht, also alle
-                    #            • In so fern wäre es auch echt sinnvoll, an der stelle dann den interface_plan zu aktualisieren
-                    #              Ja, demnächst, eins nach dem anderen
-
-                    # We count the iterations to give up this inner loop in case we have already
-                    # tried all choosing plan slots.
-                    $iterations++;
-
-                    # Move to the next slot in the interface choosing plan:
-                    $if_choosing_state = ($if_choosing_state + 1) % $plan_length;
-
-                    # Chose the session (and therefore interface) to use for this packet to send.
-                    # According to our static plan
-                    my $session_id = $interface_choosing_plan[$if_choosing_state];
-
-                    # Move to next plan slot if the interface of the choosen session is not active
-                    if ( ! ($sessions->{$session_id}->{con}->{active}) )
-                    {
-                        next;
-                    }
-
-                    # All went well \o/
-                    # We're finally sending the packet
-                    $kernel->call( $session_id, "send_through_udp", $buf );
-                    last;
-                }
-            }
-        },
+        _start => \&start_tun_session,
+        got_packet_from_tun_device => \&schedule_and_send_through_subtunnel,
         put_into_tun_device => sub {
             my ( $kernel, $heap, $buf ) = @_[ KERNEL, HEAP, ARG0 ];
 
