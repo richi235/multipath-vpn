@@ -205,7 +205,7 @@ sub add_subtunnel_to_plan
     my $factor     = shift;
 
     # in case this call was wrong and the interface is already in the plan
-    remove_subtennel_from_plan($session_id);
+    remove_subtunnel_from_plan($session_id);
 
     push( @subtunnel_choosing_plan, ($session_id) x $factor);
     $plan_length = @subtunnel_choosing_plan;
@@ -213,7 +213,7 @@ sub add_subtunnel_to_plan
     return;
 }
 
-sub remove_subtennel_from_plan
+sub remove_subtunnel_from_plan
 {
     my $session_id = shift;
 
@@ -265,7 +265,7 @@ If a IP change is detected the following is done:
 
 =item 2. The sessions using the old interface are killed
 
-=item 2. It starts a new UDP socket on the new interface ( I<using startUDPSocket()> )
+=item 2. It starts a new UDP socket on the new interface ( I<using setup_udp_subtunnel()> )
 
 =item 2. All the sessions are re-established
 
@@ -303,7 +303,7 @@ sub handle_local_ip_change
             if ($config->{links}->{$curlink}->{cursession}) {
                 $poe_kernel->call($config->{links}->{$curlink}->{cursession} => "terminate" );
             }
-            startUDPSocket($curlink);
+            setup_udp_subtunnel($curlink);
         }
         else {
             if ( $config->{links}->{$curlink}->{cursession}
@@ -533,7 +533,7 @@ sub udp_sock_session_start
         . ( $con->{dstport} || "-" ) . "\n" );
 
     eval {
-        $heap->{udp_socket} = new IO::Socket::INET(
+        $heap->{subtun_socket} = new IO::Socket::INET(
             PeerAddr  => $bind ? $con->{dstip}   : undef,
             PeerPort  => $bind ? $con->{dstport} : undef,
             LocalAddr => $con->{curip},
@@ -549,7 +549,7 @@ sub udp_sock_session_start
         return;
     }
 
-    if ( $heap->{udp_socket} ) {
+    if ( $heap->{subtun_socket} ) {
         $heap->{sessionid} = $session->ID();
         $sessions->{ $heap->{sessionid} } = {
             heap   => $heap,
@@ -560,10 +560,10 @@ sub udp_sock_session_start
         add_subtunnel_to_plan($heap->{sessionid}, $heap->{con}->{factor});
 
         # select read registers a event to be called on read input on the socket
-        $kernel->select_read( $heap->{udp_socket}, "got_data_from_udp" );
+        $kernel->select_read( $heap->{subtun_socket}, "got_data_from_udp" );
 
         if ($bind) {
-            unless ( defined( $heap->{udp_socket}->send("a") ) ) {
+            unless ( defined( $heap->{subtun_socket}->send("a") ) ) {
                 print "PostBind not worked: " . $! . "\n";
             }
         }
@@ -583,10 +583,10 @@ sub receive_from_udp_subtun
     my ( $kernel, $heap, $session ) = @_[ KERNEL, HEAP, SESSION ];
 
     my $curinput = undef;
-    while ( defined( $heap->{udp_socket}->recv( $curinput, 1600 ) ) )
+    while ( defined( $heap->{subtun_socket}->recv( $curinput, 1600 ) ) )
     {
-        $heap->{con}->{lastdstip}   = $heap->{udp_socket}->peerhost();
-        $heap->{con}->{lastdstport} = $heap->{udp_socket}->peerport();
+        $heap->{con}->{lastdstip}   = $heap->{subtun_socket}->peerhost();
+        $heap->{con}->{lastdstport} = $heap->{subtun_socket}->peerport();
 
         if ($printdebug) {
             print("Incoming datagram from '" . length($curinput) . "' Bytes\n");
@@ -698,7 +698,7 @@ sub send_through_udp_subtun
         }
 
         # The actual sending
-        if ( !defined( $heap->{udp_socket}->send( $input, 0, $dst_sockaddr ) ) ) {
+        if ( !defined( $heap->{subtun_socket}->send( $input, 0, $dst_sockaddr ) ) ) {
             print "X";
         }
     }
@@ -708,7 +708,7 @@ sub send_through_udp_subtun
 }
 
 # creates a new POE Session and does some other things
-sub startUDPSocket
+sub setup_udp_subtunnel
 {
     my $link = shift;
     my $con  = $config->{links}->{$link};
@@ -727,7 +727,7 @@ sub startUDPSocket
 
                 print( "Session term.\n");
 
-                remove_subtennel_from_plan( $session->ID() );
+                remove_subtunnel_from_plan( $session->ID() );
                 delete( $sessions->{ $session->ID() } );
             },
             got_data_from_udp => \&receive_from_udp_subtun,
@@ -737,13 +737,13 @@ sub startUDPSocket
 
                 print( "Socket terminated" . "\n" );
 
-                remove_subtennel_from_plan( $session->ID() );
+                remove_subtunnel_from_plan( $session->ID() );
                 delete( $sessions->{ $session->ID() } );
 
-                $kernel->select_read( $heap->{udp_socket} );
+                $kernel->select_read( $heap->{subtun_socket} );
 
-                close( $heap->{udp_socket} );
-                delete( $heap->{udp_socket} );
+                close( $heap->{subtun_socket} );
+                delete( $heap->{subtun_socket} );
             },
         },
         args => [$con],
