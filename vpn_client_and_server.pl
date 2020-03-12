@@ -10,7 +10,8 @@ Multipath VPN
 =head1 Technical Overview
 
 Multipath VPN is implemented without threads using 1 process and several Sessions.
-Sessions are roughly comparable to event loops (see the POE doc for details).
+Sessions group semantically related event handlers (see the POE doc for details).
+(Often related by operatingg on the same object.)
 
 At any point in time the I<number of event loops> in Multipath VPN is constant
 and calulated as follows:
