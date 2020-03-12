@@ -374,7 +374,7 @@ sub reset_routing_table
     }
 }
 
-sub schedule_and_send_through_subtunnel
+sub schedule_and_send_through_tunnel
 {
     my ( $kernel, $heap, $socket ) = @_[ KERNEL, HEAP, ARG0 ];
 
@@ -578,6 +578,134 @@ sub udp_sock_session_start
 
     $con->{cursession} = $heap->{sessionid};
 }
+sub receive_from_udp_subtun
+{
+    my ( $kernel, $heap, $session ) = @_[ KERNEL, HEAP, SESSION ];
+
+    my $curinput = undef;
+    while ( defined( $heap->{udp_socket}->recv( $curinput, 1600 ) ) )
+    {
+        $heap->{con}->{lastdstip}   = $heap->{udp_socket}->peerhost();
+        $heap->{con}->{lastdstport} = $heap->{udp_socket}->peerport();
+
+        if ($printdebug) {
+            print("Incoming datagram from '" . length($curinput) . "' Bytes\n");
+        }
+
+        if ($doPrepend) {
+            substr( $curinput, 0, length($doPrepend), "" );
+        }
+
+        if ($doCrypt) {
+            my $replace = substr( $curinput, 0, 200, "" );
+            $replace = join( "",
+                map { chr( ( ( ord($_) + 129 ) % 256 ) ) }
+                    split( //, $replace ) );
+            $curinput = $replace . $curinput;
+        }
+
+        if ($doBase64) {
+            $curinput = decode_base64($curinput);
+        }
+
+        if ( !$no_dead_peer && ( substr( $curinput, 0, 4 ) eq "SES:" ) )
+        {
+            my $announcement = [ split( ":", $curinput ) ];
+            shift(@$announcement);
+            my $dstlink = shift(@$announcement);
+
+            $config->{$dstlink}->{lastdstip} = $heap->{con}->{lastdstip};
+            $config->{$dstlink}->{lastdstport} = $heap->{con}->{lastdstport};
+
+            my $myseen = [];
+
+            if ( my $tmp = shift(@$announcement) ) {
+                $myseen = [ split( ",", $tmp ) ];
+            }
+
+            $seen->{$dstlink} = scalar(@$myseen);
+
+            foreach my $curlink ( keys %{ $config->{links} } ) {
+                $config->{links}->{$curlink}->{active} =
+                    scalar( grep { $curlink eq $_ } @$myseen )
+                    ? 1
+                    : 0;
+            }
+
+            print( "Session announcement "
+                . length($curinput)
+                . " bytes: "
+                . $dstlink
+                . " and seen links "
+                . join( ",", @$myseen ) . "\n" );
+        }
+        else {
+            if ($tuntap_session) {
+                $kernel->call( $tuntap_session => "put_into_tun_device", $curinput );
+            }
+        }
+    }
+}
+
+sub send_through_udp_subtun
+{
+    my ( $kernel, $heap, $input ) = @_[ KERNEL, HEAP, ARG0 ];
+
+    my $dst_sockaddr = undef;
+    if ( $heap->{con}->{dstip} && $heap->{con}->{dstport} ) {
+        if ( my $dstip = inet_aton( $heap->{con}->{dstip} ) ) {
+            $dst_sockaddr = pack_sockaddr_in( $heap->{con}->{dstport}, $dstip );
+        }
+        else {
+            print( "Unable to reslove " . $heap->{con}->{dstip} . "\n");
+        }
+    }
+    elsif ($heap->{con}->{lastdstip}
+        && $heap->{con}->{lastdstport} )
+    {
+        if ( my $dstip = inet_aton( $heap->{con}->{lastdstip} ) ) {
+            $dst_sockaddr = pack_sockaddr_in( $heap->{con}->{lastdstport},
+                inet_aton( $heap->{con}->{lastdstip} ) );
+        }
+        else {
+            print "Unable to reslove "
+                . $heap->{con}->{lastdstip} . "\n";
+        }
+    }
+
+    # If a valid destination address exists this potentially does
+    # special stuff with the data and then sends it. See below for what exactly
+    if ($dst_sockaddr) {
+        my $count = 0;
+
+        # Possibly Base64 encode the data
+        if ($doBase64) {
+            $input = encode_base64( $input, "" );
+        }
+
+        # Possibly "encrypt" the data
+        if ($doCrypt) {
+            my $replace = substr( $input, 0, 200, "" );
+            $replace = join( "",
+                map { chr( ( ( ord($_) + 127 ) % 256 ) ) }
+                    split( //, $replace ) );
+            $input = $replace . $input;
+        }
+
+        # Possibly prepend a fixd string
+        if ($doPrepend) {
+            $input = $doPrepend . $input;
+        }
+
+        # The actual sending
+        if ( !defined( $heap->{udp_socket}->send( $input, 0, $dst_sockaddr ) ) ) {
+            print "X";
+        }
+    }
+    else {
+        print( $heap->{con}->{name} . ": Cannot send: no dst ip/port.\n");
+    }
+}
 
 # creates a new POE Session and does some other things
 sub startUDPSocket
@@ -602,125 +730,8 @@ sub startUDPSocket
                 remove_subtennel_from_plan( $session->ID() );
                 delete( $sessions->{ $session->ID() } );
             },
-            got_data_from_udp => sub {
-                my ( $kernel, $heap, $session ) = @_[ KERNEL, HEAP, SESSION ];
-
-                my $curinput = undef;
-                while ( defined( $heap->{udp_socket}->recv( $curinput, 1600 ) ) )
-                {
-                    $heap->{con}->{lastdstip}   = $heap->{udp_socket}->peerhost();
-                    $heap->{con}->{lastdstport} = $heap->{udp_socket}->peerport();
-
-                    if ($printdebug) {
-                        print("Incoming datagram from '" . length($curinput) . "' Bytes\n");
-                    }
-
-                    if ($doPrepend) {
-                        substr( $curinput, 0, length($doPrepend), "" );
-                    }
-
-                    if ($doCrypt) {
-                        my $replace = substr( $curinput, 0, 200, "" );
-                        $replace = join( "",
-                            map { chr( ( ( ord($_) + 129 ) % 256 ) ) }
-                              split( //, $replace ) );
-                        $curinput = $replace . $curinput;
-                    }
-
-                    if ($doBase64) {
-                        $curinput = decode_base64($curinput);
-                    }
-
-                    if ( !$no_dead_peer && ( substr( $curinput, 0, 4 ) eq "SES:" ) )
-                    {
-                        my $announcement = [ split( ":", $curinput ) ];
-                        shift(@$announcement);
-                        my $dstlink = shift(@$announcement);
-
-                        $config->{$dstlink}->{lastdstip} = $heap->{con}->{lastdstip};
-                        $config->{$dstlink}->{lastdstport} = $heap->{con}->{lastdstport};
-
-                        my $myseen = [];
-
-                        if ( my $tmp = shift(@$announcement) ) {
-                            $myseen = [ split( ",", $tmp ) ];
-                        }
-
-                        $seen->{$dstlink} = scalar(@$myseen);
-
-                        foreach my $curlink ( keys %{ $config->{links} } ) {
-                            $config->{links}->{$curlink}->{active} =
-                              scalar( grep { $curlink eq $_ } @$myseen )
-                              ? 1
-                              : 0;
-                        }
-
-                        print( "Session announcement "
-                          . length($curinput)
-                          . " bytes: "
-                          . $dstlink
-                          . " and seen links "
-                          . join( ",", @$myseen ) . "\n" );
-                    }
-                    else {
-                        if ($tuntap_session) {
-                            $kernel->call( $tuntap_session => "put_into_tun_device", $curinput );
-                        }
-                    }
-                }
-            },
-            send_through_udp => sub {
-                my ( $kernel, $heap, $input ) = @_[ KERNEL, HEAP, ARG0 ];
-
-                my $to = undef;
-                if ( $heap->{con}->{dstip} && $heap->{con}->{dstport} ) {
-                    if ( my $dstip = inet_aton( $heap->{con}->{dstip} ) ) {
-                        $to = pack_sockaddr_in( $heap->{con}->{dstport}, $dstip );
-                    }
-                    else {
-                        print( "Unable to reslove " . $heap->{con}->{dstip} . "\n");
-                    }
-                }
-                elsif ($heap->{con}->{lastdstip}
-                    && $heap->{con}->{lastdstport} )
-                {
-                    if ( my $dstip = inet_aton( $heap->{con}->{lastdstip} ) ) {
-                        $to = pack_sockaddr_in( $heap->{con}->{lastdstport},
-                            inet_aton( $heap->{con}->{lastdstip} ) );
-                    }
-                    else {
-                        print "Unable to reslove "
-                          . $heap->{con}->{lastdstip} . "\n";
-                    }
-                }
-
-                if ($to) {
-                    my $count = 0;
-
-                    if ($doBase64) {
-                        $input = encode_base64( $input, "" );
-                    }
-
-                    if ($doCrypt) {
-                        my $replace = substr( $input, 0, 200, "" );
-                        $replace = join( "",
-                            map { chr( ( ( ord($_) + 127 ) % 256 ) ) }
-                              split( //, $replace ) );
-                        $input = $replace . $input;
-                    }
-
-                    if ($doPrepend) {
-                        $input = $doPrepend . $input;
-                    }
-
-                    if ( !defined( $heap->{udp_socket}->send( $input, 0, $to ) ) ) {
-                        print "X";
-                    }
-                }
-                else {
-                    print( $heap->{con}->{name} . ": Cannot send: no dst ip/port.\n");
-                }
-            },
+            got_data_from_udp => \&receive_from_udp_subtun,
+            send_through_udp => send_through_udp_subtun,
             terminate => sub {
                 my ( $kernel, $heap, $session ) = @_[ KERNEL, HEAP, SESSION ];
 
@@ -808,7 +819,7 @@ POE::Session->create(
 POE::Session->create(
     inline_states => {
         _start => \&start_tun_session,
-        got_packet_from_tun_device => \&schedule_and_send_through_subtunnel,
+        got_packet_from_tun_device => \&schedule_and_send_through_tunnel,
         put_into_tun_device => sub {
             my ( $kernel, $heap, $buf ) = @_[ KERNEL, HEAP, ARG0 ];
 
