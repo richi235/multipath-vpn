@@ -2,21 +2,24 @@
 # Simple tcp client in perl from tutorialspoint.com
 
 use strict;
+use warnings;
 use Socket;
 
-# initialize host and port
-my $host = shift || 'localhost';
-my $port = shift || 7890;
-my $server = "localhost";  # Host IP running the server
+use constant SOCK_DCCP      =>  6;
+use constant IPPROTO_DCCP   => 33;
 
-# create the socket, connect to the port
-socket(SOCKET,PF_INET,SOCK_STREAM,(getprotobyname('tcp'))[2])
+my $server_port = shift || 7890;
+my $server_ip = "localhost";
+
+# create the socket, connect to the server_port
+socket(my $con_sock, PF_INET, SOCK_DCCP, IPPROTO_DCCP)
    or die "Can't create a socket $!\n";
-connect( SOCKET, pack_sockaddr_in($port, inet_aton($server)))
-   or die "Can't connect to port $port! \n";
+
+connect( $con_sock, pack_sockaddr_in($server_port, inet_aton($server_ip)))
+   or die "Can't connect to server_port $server_port! \n";
 
 my $line;
-while ($line = <SOCKET>) {
+while ($line = <$con_sock>) {
    print "$line\n";
 }
-close SOCKET or die "close: $!";
+close $con_sock or die "close: $!";
