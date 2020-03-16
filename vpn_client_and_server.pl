@@ -496,8 +496,10 @@ sub config_tun_interface
             . $heap->{tun_if_name}
             . " dstaddr "
             . $config->{local}->{dstip} );
-        # From ifconfig doc:   dstaddr addr
-        #     Set the remote IP address for a point-to-point link (such as PPP).
+        # From ifconfig manpage:
+        # dstaddr addr
+        #
+        # Set the remote IP address for a point-to-point link (such as PPP).
         # This keyword is now obsolete; use the pointopoint keyword instead.
     }
 
@@ -741,11 +743,11 @@ sub send_through_subtun
 sub setup_udp_subtunnel
 {
     my $link = shift;
-    my $con  = $config->{links}->{$link};
+    my $new_subtunnel  = $config->{links}->{$link};
 
     print( "Starting " . $link
-      . " with source='" . $con->{curip} . "':" . $con->{srcport}
-      . " and dst=" . ( $con->{dstip}   || "-" ) . ":" . ( $con->{dstport} || "-" ) . "\n" );
+      . " with source='" . $new_subtunnel->{curip} . "':" . $new_subtunnel->{srcport}
+      . " and dst=" . ( $new_subtunnel->{dstip}   || "-" ) . ":" . ( $new_subtunnel->{dstport} || "-" ) . "\n" );
 
     # [UDP-Socket Session]
     # unique for each link
@@ -776,7 +778,7 @@ sub setup_udp_subtunnel
                 delete( $heap->{subtun_socket} );
             },
         },
-        args => [$con],
+        args => [$new_subtunnel],
     );
 }
 

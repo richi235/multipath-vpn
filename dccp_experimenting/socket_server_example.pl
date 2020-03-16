@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# This is a simple perl TCP socket server example from tutorialspoint.com
+# This is a simple perl socket server example from tutorialspoint.com
 use strict;
 use warnings;
 use Socket;
