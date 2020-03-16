@@ -163,7 +163,7 @@ sub parse_conf_file
 
         if ( $config[0] && ( lc( $config[0] ) eq "link" ) )
         {
-            $config->{links}->{ $config[1] } = {
+            $config->{subtunnels}->{ $config[1] } = {
                 name    => $config[1],
                 src     => $config[2],
                 srcport => $config[3],
@@ -281,43 +281,43 @@ If a IP change is detected the following is done:
 
 sub handle_local_ip_change
 {
-    foreach my $curlink ( keys %{ $config->{links} } )
+    foreach my $curlink ( keys %{ $config->{subtunnels} } )
     {
         my $new_src_address = '';
         if ( my $curif =
-            IO::Interface::Simple->new( $config->{links}->{$curlink}->{src} ) )
+            IO::Interface::Simple->new( $config->{subtunnels}->{$curlink}->{src} ) )
         {
             $new_src_address = $curif->address();
         }
         else
         {
-            $new_src_address = $config->{links}->{$curlink}->{src};
+            $new_src_address = $config->{subtunnels}->{$curlink}->{src};
         }
 
         my $restart = 0;
 
         if ( $new_src_address
-            && ( $config->{links}->{$curlink}->{curip} ne $new_src_address ) )
+            && ( $config->{subtunnels}->{$curlink}->{curip} ne $new_src_address ) )
         {
-            $config->{links}->{$curlink}->{curip} = $new_src_address;
-            print("IP Change for " . $config->{links}->{$curlink}->{src} . " !\n");
+            $config->{subtunnels}->{$curlink}->{curip} = $new_src_address;
+            print("IP Change for " . $config->{subtunnels}->{$curlink}->{src} . " !\n");
 
             $restart++;
         }
 
         if ($restart) {
-            if ($config->{links}->{$curlink}->{cursession}) {
-                $poe_kernel->call($config->{links}->{$curlink}->{cursession} => "terminate" );
+            if ($config->{subtunnels}->{$curlink}->{cursession}) {
+                $poe_kernel->call($config->{subtunnels}->{$curlink}->{cursession} => "terminate" );
             }
             setup_udp_subtunnel($curlink);
         }
         else {
-            if ( $config->{links}->{$curlink}->{cursession}
-              && ( $config->{links}->{$curlink}->{dstip}
-                || $config->{links}->{$curlink}->{lastdstip} ))
+            if ( $config->{subtunnels}->{$curlink}->{cursession}
+              && ( $config->{subtunnels}->{$curlink}->{dstip}
+                || $config->{subtunnels}->{$curlink}->{lastdstip} ))
             {
                 $poe_kernel->post(
-                    $config->{links}->{$curlink}->{cursession} => "send_through_udp" => "SES:"
+                    $config->{subtunnels}->{$curlink}->{cursession} => "send_through_udp" => "SES:"
                         . $curlink . ":"
                         . join( ",", keys %$lastseen ) );
             }
@@ -636,8 +636,8 @@ sub receive_from_subtun
 
             $seen->{$dstlink} = scalar(@$myseen);
 
-            foreach my $curlink ( keys %{ $config->{links} } ) {
-                $config->{links}->{$curlink}->{active} =
+            foreach my $curlink ( keys %{ $config->{subtunnels} } ) {
+                $config->{subtunnels}->{$curlink}->{active} =
                     scalar( grep { $curlink eq $_ } @$myseen )
                     ? 1
                     : 0;
@@ -743,7 +743,7 @@ sub send_through_subtun
 sub setup_udp_subtunnel
 {
     my $link = shift;
-    my $new_subtunnel  = $config->{links}->{$link};
+    my $new_subtunnel  = $config->{subtunnels}->{$link};
 
     print( "Starting " . $link
       . " with source='" . $new_subtunnel->{curip} . "':" . $new_subtunnel->{srcport}
