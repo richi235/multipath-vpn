@@ -781,10 +781,63 @@ sub setup_udp_subtunnel
         args => [$new_subtunnel],
     );
 }
+sub dccp_server_new_client {
+    my $client_socket = $_[ARG0];
+    $_[HEAP]{subtun_sock} = $client_socket;
+    POE::Session->create(
+        inline_states => {
+            on_data_received => sub {
+                my $curinput = undef;
+                $_[HEAP]{subtun_sock}->recv($curinput, 1600);
+                $_[KERNEL]->call($tuntap_session => "put_into_tun_device", $curinput);
+            },
+            on_data_to_send => sub {
+                my $payload = $_[ARG0];
+                $_[HEAP]->{subtun_sock}->send($payload);
+            }
 
+        }
+    )
+}
 ####### Section 1 END: Function Definitions #############
 
 parse_conf_file();
+
+if ( $dccp_server) {
+    POE::Session->create(
+    inline_states => {
+        _start => sub {
+            # Start the server.
+            $_[HEAP]{server} = POE::Wheel::SocketFactory->new(
+                BindPort       => 12345,
+                SuccessEvent   => "on_client_accept",
+                FailureEvent   => "on_server_error",
+                SocketDomain   => PF_INET,
+                SocketType     => SOCK_DCCP,
+                SocketProtocol => IPPROTO_DCCP,
+            );
+        },
+        on_client_accept => \&dccp_server_new_client,
+        on_server_error => sub {
+            # Shut down server.
+            my ($operation, $errnum, $errstr) = @_[ARG0, ARG1, ARG2];
+            warn "Server $operation error $errnum: $errstr\n";
+            delete $_[HEAP]{server};
+        },
+        on_client_input => sub {
+            # Handle client input.
+            my ($input, $wheel_id) = @_[ARG0, ARG1];
+            $input =~ tr[a-zA-Z][n-za-mN-ZA-M]; # ASCII rot13
+            $_[HEAP]{client}{$wheel_id}->put($input);
+        },
+        on_client_error => sub {
+            # Handle client error, including disconnect.
+            my $wheel_id = $_[ARG3];
+            delete $_[HEAP]{client}{$wheel_id};
+        },
+    }
+    );
+}
 
 
 # [Local IP Check Session]
