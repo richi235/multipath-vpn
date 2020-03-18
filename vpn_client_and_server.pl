@@ -451,12 +451,8 @@ sub tunnel_receive
     my ( $heap, $buf ) = @_[ HEAP, ARG0 ];
 
     # write data of $buf into the tun-device
-    my $size = syswrite( $heap->{tun_device}, $buf );
+    syswrite( $heap->{tun_device}, $buf );
 
-    unless ( $size == length($buf) )
-        {
-            print $size . " != " . length($buf) . "\n";
-        }
 }
 
 
