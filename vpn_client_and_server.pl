@@ -445,6 +445,21 @@ sub tunnel_send
     }
 }
 
+# Receives from a subtunnel and puts into tun/tap device
+sub tunnel_receive
+{
+    my ( $heap, $buf ) = @_[ HEAP, ARG0 ];
+
+    # write data of $buf into the tun-device
+    my $size = syswrite( $heap->{tun_device}, $buf );
+
+    unless ( $size == length($buf) )
+        {
+            print $size . " != " . length($buf) . "\n";
+        }
+}
+
+
 sub create_tun_interface
 {
     my $heap = shift;
@@ -802,7 +817,7 @@ sub dccp_server_new_client {
 ####### Section 1 END: Function Definitions #############
 
 parse_conf_file();
-
+# DCCP listen socket session
 if ( $dccp_server) {
     POE::Session->create(
     inline_states => {
@@ -905,17 +920,7 @@ POE::Session->create(
     inline_states => {
         _start => \&start_tun_session,
         got_packet_from_tun_device => \&tunnel_send,
-        put_into_tun_device => sub {
-            my ( $kernel, $heap, $buf ) = @_[ KERNEL, HEAP, ARG0 ];
-
-            # write data of $buf into the tun-device
-            my $size = syswrite( $heap->{tun_device}, $buf );
-
-            unless ( $size == length($buf) )
-            {
-                print $size . " != " . length($buf) . "\n";
-            }
-        },
+        put_into_tun_device => \&tunnel_receive,
     }
 );
 
