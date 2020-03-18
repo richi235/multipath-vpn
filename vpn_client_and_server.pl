@@ -281,44 +281,44 @@ If a IP change is detected the following is done:
 
 sub handle_local_ip_change
 {
-    foreach my $curlink ( keys %{ $config->{subtunnels} } )
+    foreach my $cur_subtunnel ( keys %{ $config->{subtunnels} } )
     {
         my $new_src_address = '';
         if ( my $curif =
-            IO::Interface::Simple->new( $config->{subtunnels}->{$curlink}->{src} ) )
+            IO::Interface::Simple->new( $config->{subtunnels}->{$cur_subtunnel}->{src} ) )
         {
             $new_src_address = $curif->address();
         }
         else
         {
-            $new_src_address = $config->{subtunnels}->{$curlink}->{src};
+            $new_src_address = $config->{subtunnels}->{$cur_subtunnel}->{src};
         }
 
         my $restart = 0;
 
-        if ( $new_src_address
-            && ( $config->{subtunnels}->{$curlink}->{curip} ne $new_src_address ) )
+        if ( $new_src_address  # when new IP != old IP: store new IP in relevent $config key
+            && ( $config->{subtunnels}->{$cur_subtunnel}->{curip} ne $new_src_address ) )
         {
-            $config->{subtunnels}->{$curlink}->{curip} = $new_src_address;
-            print("IP Change for " . $config->{subtunnels}->{$curlink}->{src} . " !\n");
+            $config->{subtunnels}->{$cur_subtunnel}->{curip} = $new_src_address;
+            print("IP Change for " . $config->{subtunnels}->{$cur_subtunnel}->{src} . " !\n");
 
             $restart++;
         }
-
+        # Kill the old session (of the no longer existing IP) and create a new one:
         if ($restart) {
-            if ($config->{subtunnels}->{$curlink}->{cursession}) {
-                $poe_kernel->call($config->{subtunnels}->{$curlink}->{cursession} => "terminate" );
+            if ($config->{subtunnels}->{$cur_subtunnel}->{cursession}) {
+                $poe_kernel->call($config->{subtunnels}->{$cur_subtunnel}->{cursession} => "terminate" );
             }
-            setup_udp_subtunnel($curlink);
+            setup_udp_subtunnel($cur_subtunnel);
         }
         else {
-            if ( $config->{subtunnels}->{$curlink}->{cursession}
-              && ( $config->{subtunnels}->{$curlink}->{dstip}
-                || $config->{subtunnels}->{$curlink}->{lastdstip} ))
-            {
+            if ( $config->{subtunnels}->{$cur_subtunnel}->{cursession}
+              && ( $config->{subtunnels}->{$cur_subtunnel}->{dstip}
+                || $config->{subtunnels}->{$cur_subtunnel}->{lastdstip} ))
+            {   # Send a status info to peer
                 $poe_kernel->post(
-                    $config->{subtunnels}->{$curlink}->{cursession} => "send_through_udp" => "SES:"
-                        . $curlink . ":"
+                    $config->{subtunnels}->{$cur_subtunnel}->{cursession} => "send_through_udp" => "SES:"
+                        . $cur_subtunnel . ":"
                         . join( ",", keys %$lastseen ) );
             }
         }
@@ -636,9 +636,9 @@ sub receive_from_subtun
 
             $seen->{$dstlink} = scalar(@$myseen);
 
-            foreach my $curlink ( keys %{ $config->{subtunnels} } ) {
-                $config->{subtunnels}->{$curlink}->{active} =
-                    scalar( grep { $curlink eq $_ } @$myseen )
+            foreach my $cur_subtunnel ( keys %{ $config->{subtunnels} } ) {
+                $config->{subtunnels}->{$cur_subtunnel}->{active} =
+                    scalar( grep { $cur_subtunnel eq $_ } @$myseen )
                     ? 1
                     : 0;
             }
