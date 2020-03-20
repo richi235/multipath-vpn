@@ -132,7 +132,7 @@ my @subtunnel_choosing_plan;
 my $subtun_choosing_state = 0;   # current array index
 my $plan_length = 0;                # number of elements
 
-
+my $dccp_mode = 1;
 
 ### Signal Handlers ###
 $SIG{INT} = sub { die "Caught a SIGINT Signal. Current Errno: $!" };
@@ -159,41 +159,41 @@ sub parse_conf_file
         s/\#.*$//gi;      # delete all comments
         next if m,^\s*$,; # next if we're in a now deleted line
 
-        my @config = split( /\t/, $_ );
+        my @line = split( /\t/, $_ );
 
-        if ( $config[0] && ( lc( $config[0] ) eq "link" ) )
+        if ( $line[0] && ( lc( $line[0] ) eq "link" ) )
         {
-            $config->{subtunnels}->{ $config[1] } = {
-                name    => $config[1],
-                src     => $config[2],
-                srcport => $config[3],
-                dstip   => $config[4] || undef,
-                dstport => $config[5] || undef,
-                factor  => $config[6],
+            $config->{subtunnels}->{ $line[1] } = {
+                name    => $line[1],
+                src     => $line[2],
+                srcport => $line[3],
+                dstip   => $line[4] || undef,
+                dstport => $line[5] || undef,
+                factor  => $line[6],
 
-                lastdstip => $config[4] || undef,
-                options   => $config[7] || "",
+                lastdstip => $line[4] || undef,
+                options   => $line[7] || "",
                 curip     => "",
             };
         }
-        elsif ( $config[0] && ( lc( $config[0] ) eq "local" ) ) {
+        elsif ( $line[0] && ( lc( $line[0] ) eq "local" ) ) {
             $config->{local} = {
-                ip             => $config[1],
-                subnet_size    => $config[2] || 24,
-                mtu            => $config[3] || 1300,
-                dstip          => $config[4],
-                options        => $config[5],
+                ip             => $line[1],
+                subnet_size    => $line[2] || 24,
+                mtu            => $line[3] || 1300,
+                dstip          => $line[4],
+                options        => $line[5],
             };
         }
-        elsif ( $config[0] && ( lc( $config[0] ) eq "route" ) ) {
+        elsif ( $line[0] && ( lc( $line[0] ) eq "route" ) ) {
             push(
                 @{ $config->{route} },
                 {
-                    to            => $config[1],
-                    subnet_size   => $config[2],
-                    gw            => $config[3],
-                    table         => $config[4],
-                    metric        => $config[5],
+                    to            => $line[1],
+                    subnet_size   => $line[2],
+                    gw            => $line[3],
+                    table         => $line[4],
+                    metric        => $line[5],
                 });
         }
         elsif (m,^\s*$,) {
@@ -294,7 +294,7 @@ sub handle_local_ip_change
             $new_src_address = $config->{subtunnels}->{$cur_subtunnel}->{src};
         }
 
-        my $restart = 0;
+        my $restart_subtunnel = 0;
 
         if ( $new_src_address  # when new IP != old IP: store new IP in relevent $config key
             && ( $config->{subtunnels}->{$cur_subtunnel}->{curip} ne $new_src_address ) )
@@ -302,16 +302,17 @@ sub handle_local_ip_change
             $config->{subtunnels}->{$cur_subtunnel}->{curip} = $new_src_address;
             print("IP Change for " . $config->{subtunnels}->{$cur_subtunnel}->{src} . " !\n");
 
-            $restart++;
+            $restart_subtunnel++;
         }
-        # Kill the old session (of the no longer existing IP) and create a new one:
-        if ($restart) {
+        if ($restart_subtunnel) {
+            # Kill the old session (of the no longer existing IP) and create a new one:
             if ($config->{subtunnels}->{$cur_subtunnel}->{cursession}) {
                 $poe_kernel->call($config->{subtunnels}->{$cur_subtunnel}->{cursession} => "terminate" );
             }
             setup_udp_subtunnel($cur_subtunnel);
         }
         else {
+            # When everything OK only send status update
             if ( $config->{subtunnels}->{$cur_subtunnel}->{cursession}
               && ( $config->{subtunnels}->{$cur_subtunnel}->{dstip}
                 || $config->{subtunnels}->{$cur_subtunnel}->{lastdstip} ))
@@ -380,7 +381,7 @@ sub reset_routing_table
     }
 }
 
-sub tunnel_send
+sub subtun_send
 {
     my ( $kernel, $heap, $socket ) = @_[ KERNEL, HEAP, ARG0 ];
 
@@ -446,7 +447,7 @@ sub tunnel_send
 }
 
 # Receives from a subtunnel and puts into tun/tap device
-sub tunnel_receive
+sub subtun_receive
 {
     my ( $heap, $buf ) = @_[ HEAP, ARG0 ];
 
@@ -564,7 +565,7 @@ sub udp_subtun_session_start
 
     # if the previous eval produced an error
     if ($@) {
-        print "Not possible: " . $@ . "\n";
+        print "Creating Socket not possible: " . $@ . "\n";
         return;
     }
 
@@ -750,13 +751,46 @@ sub send_through_subtun
     }
 }
 
+
+sub setup_dccp_client
+{
+    POE::Session->create(
+    inline_states => {
+        _start => sub {
+        # Start the server.
+        $_[HEAP]{sock} = POE::Wheel::SocketFactory->new(
+            RemoteAddress  => "127.0.0.1",
+            RemotePort     => 12345,
+            SuccessEvent   => "on_connection_established",
+            FailureEvent   => "on_connection_error",
+            SocketDomain   => PF_INET,
+            SocketType     => SOCK_DCCP,
+            SocketProtocol => IPPROTO_DCCP,
+        );
+        },
+        on_connection_established => sub {
+            $poe_kernel->select_read($_[HEAP]{sock}, "on_input");
+        },
+        on_input        => \&subtun_receive,
+        on_data_to_send => \&subtun_send,
+        on_connection_error => sub {
+            my ($operation, $errnum, $errstr) = @_[ARG0, ARG1, ARG2];
+            warn "Server $operation error $errnum: $errstr\n";
+            delete $_[HEAP]{sock};
+        },
+    }
+    );
+
+}
+
+
 # creates a new POE Session and does some other things
 sub setup_udp_subtunnel
 {
-    my $link = shift;
-    my $new_subtunnel  = $config->{subtunnels}->{$link};
+    my $subtun_name = shift;
+    my $new_subtunnel  = $config->{subtunnels}->{$subtun_name};
 
-    print( "Starting " . $link
+    print( "Starting " . $subtun_name
       . " with source='" . $new_subtunnel->{curip} . "':" . $new_subtunnel->{srcport}
       . " and dst=" . ( $new_subtunnel->{dstip}   || "-" ) . ":" . ( $new_subtunnel->{dstport} || "-" ) . "\n" );
 
@@ -792,29 +826,42 @@ sub setup_udp_subtunnel
         args => [$new_subtunnel],
     );
 }
+
+sub dccp_subtun_minimal_recv
+{
+    my $curinput = undef;
+    $_[HEAP]{subtun_sock}->recv($curinput, 1600);
+    $_[KERNEL]->call($tuntap_session => "put_into_tun_device", $curinput);
+}
+
+sub dccp_subtun_minimal_send
+{
+    my $payload = $_[ARG0];
+    $_[HEAP]->{subtun_sock}->send($payload);
+}
+
 sub dccp_server_new_client {
     my $client_socket = $_[ARG0];
     $_[HEAP]{subtun_sock} = $client_socket;
+    # hier evlt. auch noch select_read()
+
+    ## Create a new session for every new dccp subtunnel socket
     POE::Session->create(
         inline_states => {
-            on_data_received => sub {
-                my $curinput = undef;
-                $_[HEAP]{subtun_sock}->recv($curinput, 1600);
-                $_[KERNEL]->call($tuntap_session => "put_into_tun_device", $curinput);
+            _start    => sub {
+                $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_data_received");
             },
-            on_data_to_send => sub {
-                my $payload = $_[ARG0];
-                $_[HEAP]->{subtun_sock}->send($payload);
-            }
-
+            on_data_received => \&subtun_receive,
+            on_data_to_send => \&subtun_send,
         }
-    )
+    );
 }
 ####### Section 1 END: Function Definitions #############
 
 parse_conf_file();
+
 # DCCP listen socket session
-if ( $dccp_server) {
+if ( $dccp_mode) {
     POE::Session->create(
     inline_states => {
         _start => sub {
@@ -834,17 +881,6 @@ if ( $dccp_server) {
             my ($operation, $errnum, $errstr) = @_[ARG0, ARG1, ARG2];
             warn "Server $operation error $errnum: $errstr\n";
             delete $_[HEAP]{server};
-        },
-        on_client_input => sub {
-            # Handle client input.
-            my ($input, $wheel_id) = @_[ARG0, ARG1];
-            $input =~ tr[a-zA-Z][n-za-mN-ZA-M]; # ASCII rot13
-            $_[HEAP]{client}{$wheel_id}->put($input);
-        },
-        on_client_error => sub {
-            # Handle client error, including disconnect.
-            my $wheel_id = $_[ARG3];
-            delete $_[HEAP]{client}{$wheel_id};
         },
     }
     );
@@ -915,8 +951,8 @@ POE::Session->create(
 POE::Session->create(
     inline_states => {
         _start => \&start_tun_session,
-        got_packet_from_tun_device => \&tunnel_send,
-        put_into_tun_device => \&tunnel_receive,
+        got_packet_from_tun_device => \&subtun_send,
+        put_into_tun_device => \&subtun_receive,
     }
 );
 
