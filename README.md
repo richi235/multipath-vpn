@@ -10,13 +10,14 @@ Like OpenVPN, but with multiple links from Client to Server.
  * Currently Linux only
  * the ```vpn_client_and_server.pl``` program acts as client and server in one, depending on the configuration file
 
-## Installation
+## Installation (Package names are debian/ubuntu specific)
 
 ### On client
 ```bash
 git clone https://github.com/richi235/Reinhard-VPN
 
 # installing the required perl modules:
+apt install libpoe-perl build-essential
 cpan POE::Wheel::UDP IO::Interface::Simple POE::XS::Loop::Poll
 
 # copy the config
@@ -29,6 +30,7 @@ Edit the config conforming to your network setup.
 git clone https://github.com/richi235/Reinhard-VPN
 
 # installing the required perl modules:
+apt install libpoe-perl build-essential
 cpan POE::Wheel::UDP IO::Interface::Simple POE::XS::Loop::Poll
 
 # copy the config
