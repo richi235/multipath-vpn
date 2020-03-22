@@ -847,18 +847,18 @@ sub dccp_subtun_minimal_send
 
 sub dccp_server_new_client {
     my $client_socket = $_[ARG0];
-    $_[HEAP]{subtun_sock} = $client_socket;
-    # hier evlt. auch noch select_read()
 
     ## Create a new session for every new dccp subtunnel socket
     POE::Session->create(
         inline_states => {
             _start    => sub {
+                $_[HEAP]{subtun_sock} = $_[ARG0];
                 $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_data_received");
             },
             on_data_received => \&dccp_subtun_minimal_recv,
             on_data_to_send => \&dccp_subtun_minimal_send,
-        }
+        },
+        args => [$client_socket],
     );
 }
 ####### Section 1 END: Function Definitions #############
