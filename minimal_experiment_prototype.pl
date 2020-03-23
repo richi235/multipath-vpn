@@ -835,14 +835,14 @@ sub setup_udp_subtunnel
 sub dccp_subtun_minimal_recv
 {
     my $curinput = undef;
-    $_[HEAP]{subtun_sock}->recv($curinput, 1600);
+    $_[HEAP]{subtun_sock}->sysread($curinput, 1600);
     $_[KERNEL]->call($tuntap_session => "put_into_tun_device", $curinput);
 }
 
 sub dccp_subtun_minimal_send
 {
     my $payload = $_[ARG0];
-    $_[HEAP]->{subtun_sock}->send($payload);
+    $_[HEAP]->{subtun_sock}->syswrite($payload);
 }
 
 sub dccp_server_new_client {
