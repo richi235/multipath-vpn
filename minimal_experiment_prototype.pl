@@ -692,37 +692,24 @@ sub send_through_subtun
     }
 }
 
-
 sub setup_dccp_client
 {
 
     my $subtunname = shift;
     my $new_subtunnel  = $config->{subtunnels}->{$subtunname};
 
+    socket(my $con_sock, PF_INET, SOCK_DCCP, IPPROTO_DCCP);
+    connect($con_sock, pack_sockaddr_in(12345, inet_aton($new_subtunnel->{dstip})));
+
+
     POE::Session->create(
     inline_states => {
         _start => sub {
-        # Start the server.
-        $_[HEAP]{sock} = POE::Wheel::SocketFactory->new(
-            RemoteAddress  => $new_subtunnel->{dstip},
-            RemotePort     => 12345,
-            SuccessEvent   => "on_connection_established",
-            FailureEvent   => "on_connection_error",
-            SocketDomain   => PF_INET,
-            SocketType     => SOCK_DCCP,
-            SocketProtocol => IPPROTO_DCCP,
-        );
-        },
-        on_connection_established => sub {
-            $poe_kernel->select_read($_[HEAP]{sock}, "on_input");
+            $_[HEAP]{subtun_sock} = $con_sock;
+            $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_input");
         },
         on_input        => \&dccp_subtun_minimal_recv,
         on_data_to_send => \&dccp_subtun_minimal_send,
-        on_connection_error => sub {
-            my ($operation, $errnum, $errstr) = @_[ARG0, ARG1, ARG2];
-            warn("Client $operation error $errnum: $errstr\n");
-            delete $_[HEAP]{sock};
-        },
     }
     );
 
