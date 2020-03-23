@@ -541,64 +541,6 @@ sub start_tun_session
     $tuntap_session = $_[SESSION];
 }
 
-sub udp_subtun_session_start
-{
-    my ( $kernel, $heap, $session, $con ) = @_[ KERNEL, HEAP, SESSION, ARG0 ];
-    $heap->{subtun} = $con;
-
-    my $bind  = ( $con->{options} =~ m,bind,i )  ? 1 : 0;
-    my $reuse = ( $con->{options} =~ m,reuse,i ) ? 1 : 0;
-
-    print( "Bind: " . $bind . " Reuse:" . $reuse . " "
-        . ( $con->{dstip}   || "-" ) . ":"
-        . ( $con->{dstport} || "-" ) . "\n" );
-
-    eval {
-        $heap->{subtun_socket} = new IO::Socket::INET(
-            PeerAddr  => $bind ? $con->{dstip}   : undef,
-            PeerPort  => $bind ? $con->{dstport} : undef,
-            LocalAddr => $con->{curip},
-            LocalPort => $con->{srcport},
-            ReuseAddr => $reuse ? 1 : 0,
-            Proto     => 'udp',
-        ) or die "ERROR in Socket Creation : $!\n";
-    };
-
-    # if the previous eval produced an error
-    if ($@) {
-        print "Creating Socket not possible: " . $@ . "\n";
-        return;
-    }
-
-    if ( $heap->{subtun_socket} ) {
-        $heap->{sessionid} = $session->ID();
-        $sessions->{ $heap->{sessionid} } = {
-            heap   => $heap,
-            factor => $heap->{subtun}->{factor},
-            con    => $con,
-        };
-
-        add_subtunnel_to_plan($heap->{sessionid}, $heap->{subtun}->{factor});
-
-        # select read registers a event to be called on read input on the socket
-        $kernel->select_read( $heap->{subtun_socket}, "got_data_from_udp" );
-
-        if ($bind) {
-            unless ( defined( $heap->{subtun_socket}->send("a") ) ) {
-                print "PostBind not worked: " . $! . "\n";
-            }
-        }
-    }
-    else {
-        my $retrytimeout = $config->{retrytimeout} || 30;
-        print "Binding to "
-            . $con->{curip} . ":"
-            . $con->{srcport}
-            . " not worked!\n";
-    }
-
-    $con->{cursession} = $heap->{sessionid};
-}
 
 # This function is L4 protocol (udp, dccp, tcp) independent
 sub receive_from_subtun
@@ -788,49 +730,6 @@ sub setup_dccp_client
 
 }
 
-
-# creates a new POE Session and does some other things
-sub setup_udp_subtunnel
-{
-    my $link = shift;
-    my $new_subtunnel  = $config->{subtunnels}->{$link};
-
-    print( "Starting " . $link
-      . " with source='" . $new_subtunnel->{curip} . "':" . $new_subtunnel->{srcport}
-      . " and dst=" . ( $new_subtunnel->{dstip}   || "-" ) . ":" . ( $new_subtunnel->{dstport} || "-" ) . "\n" );
-
-    # [UDP-Socket Session]
-    # unique for each link
-    POE::Session->create(
-        inline_states => {
-            _start => \&udp_subtun_session_start,
-            _stop => sub {
-                my ( $kernel, $heap, $session ) = @_[ KERNEL, HEAP, SESSION ];
-
-                print( "Session term.\n");
-
-                remove_subtunnel_from_plan( $session->ID() );
-                delete( $sessions->{ $session->ID() } );
-            },
-            got_data_from_udp => \&receive_from_subtun,
-            send_through_udp => \&send_through_subtun,
-            terminate => sub {
-                my ( $kernel, $heap, $session ) = @_[ KERNEL, HEAP, SESSION ];
-
-                print( "Socket terminated" . "\n" );
-
-                remove_subtunnel_from_plan( $session->ID() );
-                delete( $sessions->{ $session->ID() } );
-
-                $kernel->select_read( $heap->{subtun_socket} );
-
-                close( $heap->{subtun_socket} );
-                delete( $heap->{subtun_socket} );
-            },
-        },
-        args => [$new_subtunnel],
-    );
-}
 
 sub dccp_subtun_minimal_recv
 {
