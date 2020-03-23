@@ -77,11 +77,9 @@ use POE
 
 use IO::File;
 use IO::Interface::Simple;
-use IO::Socket::INET;
 use IO::Socket;
 use Socket;
 
-use Socket qw(IPPROTO_TCP TCP_NODELAY);
 use Time::HiRes qw/gettimeofday tv_interval/;
 use MIME::Base64;
 
