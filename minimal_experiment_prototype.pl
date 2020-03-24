@@ -110,6 +110,7 @@ use constant IPPROTO_DCCP   => 33;
 
 # Global Variables
 my $sessions   = {};
+my @subtun_sessions = ();
 my $doCrypt    = 0;
 my $doPrepend  = undef;    # "abcdefghikjlmnopqrstuvwxyz";
 my $doBase64   = 0;
@@ -478,6 +479,8 @@ sub setup_dccp_client
     inline_states => {
         _start => sub {
             $_[HEAP]{subtun_sock} = $con_sock;
+            # Put this sessions id in our global array
+            push(@subtun_sessions, $_[SESSION]->ID());
             $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_input");
         },
         on_input        => \&dccp_subtun_minimal_recv,
@@ -509,6 +512,8 @@ sub dccp_server_new_client {
         inline_states => {
             _start    => sub {
                 $_[HEAP]{subtun_sock} = $_[ARG0];
+                # Put this session's id in our global array
+                push(@subtun_sessions, $_[SESSION]->ID());
                 $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_data_received");
             },
             on_data_received => \&dccp_subtun_minimal_recv,
