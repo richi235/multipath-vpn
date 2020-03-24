@@ -41,7 +41,7 @@ Every five seconds it checks if the server is reachable via all configured links
 If one goes down he deconfigures the corresponding interface.
 This session keeps checking if the target is reachable, if it is reachable again,
 the connection will be reestablished.
-To achive this all 5 seconds it calls I<reset_routing_table()> if needed.
+To achive this all 5 seconds it calls I<set_via_tunnel_routes()> if needed.
 
 =head3 [TUN-Interface Session]
 
@@ -290,9 +290,10 @@ sub handle_local_ip_change
 
 =pod
 
-=head2 reset_routing_table( I<$up> )
+=head2 set_via_tunnel_routes( I<$up> )
 
-Resets all routing table entries made by this programm.
+Sets routes to networks that are reachable via the tunnel (according to conf file).
+Uses the ip command.
 
 =over
 
@@ -304,7 +305,7 @@ Resets all routing table entries made by this programm.
 
 =cut
 
-sub reset_routing_table
+sub set_via_tunnel_routes
 {
     my $up = shift;
 
