@@ -352,7 +352,7 @@ sub send_scheduler
     while ( sysread( $heap->{tun_device}, $buf , TUN_MAX_FRAME ) )
     {
         # We're finally sending the packet
-        $kernel->call( $session_id, "dccp_subtun_minimal_send", $buf );
+        $kernel->call( $subtun_sessions[0], "on_data_to_send", $buf );
     }
 }
 
