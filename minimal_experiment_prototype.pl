@@ -472,21 +472,25 @@ sub setup_dccp_client
     my $subtunname = shift;
     my $new_subtunnel  = $config->{subtunnels}->{$subtunname};
 
-    socket(my $con_sock, PF_INET, SOCK_DCCP, IPPROTO_DCCP);
-    connect($con_sock, pack_sockaddr_in(12345, inet_aton($new_subtunnel->{dstip})));
+    socket(my $con_sock, PF_INET, SOCK_DCCP, IPPROTO_DCCP)
+       or die("Can't create a dccp socket $!\n");
+
+    connect($con_sock, pack_sockaddr_in(12345, inet_aton($new_subtunnel->{dstip})))
+        or die("DCCP Client: Can't connect to server! \n");
 
 
     POE::Session->create(
     inline_states => {
         _start => sub {
-            $_[HEAP]{subtun_sock} = $con_sock;
+            $_[HEAP]{subtun_sock} = $_[ARG0];
             # Put this sessions id in our global array
             push(@subtun_sessions, $_[SESSION]->ID());
             $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_input");
         },
         on_input        => \&dccp_subtun_minimal_recv,
         on_data_to_send => \&dccp_subtun_minimal_send,
-    }
+    },
+    args => [$$con_sock],
     );
 
 }
