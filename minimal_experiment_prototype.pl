@@ -580,4 +580,6 @@ POE::Session->create(
     }
 );
 
+set_via_tunnel_routes(1);
+
 $poe_kernel->run();
