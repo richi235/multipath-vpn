@@ -126,10 +126,6 @@ my $config   = {};
 my $seen     = {};
 my $lastseen = {};
 
-my @subtunnel_choosing_plan;
-my $subtun_choosing_state = 0;   # current array index
-my $plan_length = 0;                # number of elements
-
 my $dccp_Texit  = 0;
 my $dccp_Tentry = 1;
 
@@ -202,40 +198,6 @@ sub parse_conf_file
         }
     }
     close($conf_file);
-}
-
-sub add_subtunnel_to_plan
-{
-    my $session_id = shift;
-    my $factor     = shift;
-
-    # in case this call was wrong and the interface is already in the plan
-    remove_subtunnel_from_plan($session_id);
-
-    push( @subtunnel_choosing_plan, ($session_id) x $factor);
-    $plan_length = @subtunnel_choosing_plan;
-
-    return;
-}
-
-sub remove_subtunnel_from_plan
-{
-    my $session_id = shift;
-
-    my @new_plan;
-
-    for (@subtunnel_choosing_plan)
-    {
-        if ( $_ != $session_id ) {
-            push(@new_plan, $_);
-        }
-    }
-
-    @subtunnel_choosing_plan = @new_plan;
-
-    $plan_length = @subtunnel_choosing_plan;
-
-    return;
 }
 
 
@@ -380,68 +342,16 @@ sub reset_routing_table
     }
 }
 
-sub subtun_send
+sub send_scheduler
 {
-    my ( $kernel, $heap, $socket ) = @_[ KERNEL, HEAP, ARG0 ];
-
-    if ( $socket != $heap->{tun_device} ) {
-        die();
-    }
+    my ( $kernel, $heap ) = @_[ KERNEL, HEAP];
 
     # read data from the tun device
-    my $buf = "";
+    my $buf;
     while ( sysread( $heap->{tun_device}, $buf , TUN_MAX_FRAME ) )
     {
-        my $iterations = 0;
-        while ($iterations < $plan_length)
-        {
-            # Problem: Was mache ich wenn aktuelles interface down ist?
-            #   • Dann muss ich ja zum nächsten interface gehen
-            #   • braucht also ne schleife
-            #   • Was wäre dann die schleifenbedingung?
-            #     • Evtl true und dann mit last rausspringen wenn es geklappt hat
-            #     • Also genauso wie es jetzt auch ist
-            #       jo, würde gehn
-            #       • Wobei Problem: das könnte sein das es nie terminiert
-            #         • aktuell ist es ja so, dass er nach $Anzahl sessions sicher terminiert
-            #           Also als bedingung $i <= $plan_length ?
-            #           • so geht man sicher das jeder "slot" einmal probiert wird
-            #             klingt eigentlich gut, ja
-            #
-            #  2. Gedanke: Es kann ja sein, dass der ->{subtun}->{active} test überhaupt nix bringt
-            #      • Weil es wird nur mega selten geupdated
-            #        • nur in der udp_socket_session beim event got_data_from_udp
-            #        • und nur wenn die received message mit "SES: " anfängt (Session announcement)
-            #        • Wobei hmm, sagt ein announcment immer was über alle links?
-            #          Weil die gegenstelle ja auch "beide" sieht und was darüber erzählen kann
-            #          • Ja okay in so fern kann es eigentlich doch ganz sinnvoll sein
-            #            • Man sollte sich halt echt mal die session announcments anschauen zur laufzeit
-            #            • Aber es kann echt sein das der server da erzählt, was er für sessions sieht, also alle
-            #            • In so fern wäre es auch echt sinnvoll, an der stelle dann den interface_plan zu aktualisieren
-            #              Ja, demnächst, eins nach dem anderen
-
-            # We count the iterations to give up this inner loop in case we have already
-            # tried all choosing plan slots.
-            $iterations++;
-
-            # Move to the next slot in the interface choosing plan:
-            $subtun_choosing_state = ($subtun_choosing_state + 1) % $plan_length;
-
-            # Chose the session (and therefore interface) to use for this packet to send.
-            # According to our static plan
-            my $session_id = $subtunnel_choosing_plan[$subtun_choosing_state];
-
-            # Move to next plan slot if the interface of the choosen session is not active
-            if ( ! ($sessions->{$session_id}->{subtun}->{active}) )
-            {
-                next;
-            }
-
-            # All went well \o/
-            # We're finally sending the packet
-            $kernel->call( $session_id, "send_through_udp", $buf );
-            last;
-        }
+        # We're finally sending the packet
+        $kernel->call( $session_id, "dccp_subtun_minimal_send", $buf );
     }
 }
 
@@ -797,7 +707,7 @@ if ( $dccp_Tentry) {
 POE::Session->create(
     inline_states => {
         _start => \&start_tun_session,
-        got_packet_from_tun_device => \&subtun_send,
+        got_packet_from_tun_device => \&send_scheduler,
         put_into_tun_device => \&subtun_receive,
     }
 );
