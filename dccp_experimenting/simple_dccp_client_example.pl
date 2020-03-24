@@ -13,7 +13,7 @@ my $server_ip = "localhost";
 
 # create the socket, connect to the server_port
 socket(my $con_sock, PF_INET, SOCK_DCCP, IPPROTO_DCCP)
-   or die "Can't create a socket $!\n";
+   or die "Can't create a dccp socket $!\n";
 
 connect( $con_sock, pack_sockaddr_in($server_port, inet_aton($server_ip)))
    or die "Can't connect to server_port $server_port! \n";
