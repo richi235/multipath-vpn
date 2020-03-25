@@ -16,7 +16,7 @@ Sessions group semantically related event handlers (see the POE doc for details)
 At any point in time the I<number of event loops> in Multipath VPN is constant
 and calulated as follows:
 
-I<3> + B<n> ; with B<n> = I<Number of paths/links to Server>
+I<1> + B<n> ; with B<n> = I<Number of paths/links to Server>
 
 The following section explains how this formula is combined and what exactly these
 Sessions do.
@@ -27,22 +27,6 @@ The I<name tags> used here are also labled in the source code. In the comments a
 every B<POE::Session-E<gt>create(> line.
 
 
-=head3 [Local IP Check Session]
-
-This Session is created B<at startup> exists permanentely and is I<unique> for one running instance of multipath vpn.
-Once a seconds it calls I<handle_local_ip_change()>.
-The sessions purpose is to ensure multipath vpn continues working even if
-interface IP address changes (of server or client both are handled) happen.
-
-=head3 [Target Reachability Check (TRC) Session]
-
-This Session is created B<at startup> exists permanentely and is I<unique> for one running instance of multipath vpn.
-Every five seconds it checks if the server is reachable via all configured links.
-If one goes down he deconfigures the corresponding interface.
-This session keeps checking if the target is reachable, if it is reachable again,
-the connection will be reestablished.
-To achive this all 5 seconds it calls I<set_via_tunnel_routes()> if needed.
-
 =head3 [TUN-Interface Session]
 
 This Session is created B<at startup> exists permanentely and is I<unique> for one running instance of multipath vpn.
@@ -50,9 +34,9 @@ Running on one node recieving and accepting the multipath-vpn tunnel packets fro
 This session also is responsible for unpacking the contained packets and forwarding it to the clients in the local net.
 The session also creates the tun/tap interface when it is created.
 
-=head3 [UDP-Socket Session]
+=head3 [Subtunnel-Socket Session]
 
-One Instance of Session is B<unique for for every UDP Socket> (which is unique for every link). Therefore I<several instances>
+One Instance of Session is B<unique for for every Subtunnel> (which is unique for every link). Therefore I<several instances>
 of this session can exist and this is the non-static B<n> in the formula above.
 It handles all events corresponding to sending packets to other Multipath VPN nodes.
 Therefore this sessions takes TCP/UDP packets from the tun/tap interface, wraps them into UDP
