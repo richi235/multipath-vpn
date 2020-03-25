@@ -358,7 +358,7 @@ sub send_scheduler
     while ( sysread( $_[HEAP]->{tun_device}, $buf , TUN_MAX_FRAME ) )
     {
         # We're finally sending the packet
-        $kernel->call( $subtun_sessions[0], "on_data_to_send", $buf );
+        $_[KERNEL]->call( $subtun_sessions[0], "on_data_to_send", $buf );
     }
     $current_subtun_id = ($current_subtun_id+1) % $subtun_count;
 }
