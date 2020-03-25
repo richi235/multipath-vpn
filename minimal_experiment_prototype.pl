@@ -56,17 +56,14 @@ use warnings;
 use v5.10;
 
 use POE;
-use POE::Wheel::UDP;
 use POE
-  qw(Component::Server::TCP Component::Client::TCP Filter::Block XS::Loop::Poll Filter::Stream);
+  qw(Filter::Block XS::Loop::Poll Filter::Stream);
 
 use IO::File;
 use IO::Interface::Simple;
 use IO::Socket;
 use Socket;
 
-use Time::HiRes qw/gettimeofday tv_interval/;
-use MIME::Base64;
 use Term::ANSIColor;
 
 # Constants
