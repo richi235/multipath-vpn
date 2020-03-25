@@ -204,21 +204,6 @@ sub parse_conf_file
 }
 
 
-sub printDebug
-{
-    print "\n" . join(
-        "\t",
-        map {
-                $_ . "="
-              . ( $sessions->{$_}->{high}        || "-" ) . "("
-              . ( $sessions->{$_}->{outcount}    || "-" ) . "/" . ""
-              . ( $sessions->{$_}->{curoutcount} || "-" ) . "/" . ""
-              . ( $sessions->{$_}->{tried}       || "-" ) . ")"
-        } keys %$sessions
-    ) . "\n";
-}
-
-
 =pod
 
 =head2 set_via_tunnel_routes( I<$up> )
