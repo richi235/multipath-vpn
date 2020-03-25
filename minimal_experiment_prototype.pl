@@ -348,15 +348,19 @@ sub set_via_tunnel_routes
 
 sub send_scheduler
 {
-    my ( $kernel, $heap ) = @_[ KERNEL, HEAP];
+    # State is same as static for local variables in C
+    # Value of variables is persistent between function calls, because stored on the heap
+    state $current_subtun_id = 0;
+    state $subtun_count = @subtun_sessions;
 
     # read data from the tun device
     my $buf;
-    while ( sysread( $heap->{tun_device}, $buf , TUN_MAX_FRAME ) )
+    while ( sysread( $_[HEAP]->{tun_device}, $buf , TUN_MAX_FRAME ) )
     {
         # We're finally sending the packet
         $kernel->call( $subtun_sessions[0], "on_data_to_send", $buf );
     }
+    $current_subtun_id = ($current_subtun_id+1) % $subtun_count;
 }
 
 # Receives from a subtunnel and puts into tun/tap device
