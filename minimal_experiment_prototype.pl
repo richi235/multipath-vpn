@@ -351,7 +351,12 @@ sub send_scheduler
     # State is same as static for local variables in C
     # Value of variables is persistent between function calls, because stored on the heap
     state $current_subtun_id = 0;
-    state $subtun_count = @subtun_sessions;
+    my $subtun_count = @subtun_sessions;
+
+    if ( $subtun_count == 0) {
+        say("  send_scheduler called with no subtunnels???");
+        return;
+    }
 
     # read data from the tun device
     my $buf;
