@@ -366,6 +366,7 @@ sub send_scheduler
         $_[KERNEL]->call( $subtun_sessions[0], "on_data_to_send", $buf );
     }
     $current_subtun_id = ($current_subtun_id+1) % $subtun_count;
+    say( "Just sent 1 payload package, got $subtun_count subtunnels" );
 }
 
 # Receives from a subtunnel and puts into tun/tap device
