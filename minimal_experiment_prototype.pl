@@ -69,6 +69,7 @@ and delivers them to the other multipath VPN node configured in the conf file.
 # Includes
 use strict;
 use warnings;
+use v5.10;
 
 use POE;
 use POE::Wheel::UDP;
@@ -82,6 +83,7 @@ use Socket;
 
 use Time::HiRes qw/gettimeofday tv_interval/;
 use MIME::Base64;
+use Term::ANSIColor;
 
 # Constants
 use constant TUN_MAX_FRAME => 4096;
@@ -478,6 +480,7 @@ sub setup_dccp_client
     connect($con_sock, pack_sockaddr_in(12345, inet_aton($new_subtunnel->{dstip})))
         or die("DCCP Client: Can't connect to server! \n");
 
+    say(colored("DCCP Client: ", 'bold green') . "Succesfully connected one subtunnel");
 
     POE::Session->create(
     inline_states => {
@@ -519,6 +522,8 @@ sub dccp_server_new_client {
                 $_[HEAP]{subtun_sock} = $_[ARG0];
                 # Put this session's id in our global array
                 push(@subtun_sessions, $_[SESSION]->ID());
+                say(colored("DCCP Server: ", 'bold green')
+                       . "Succesfully accepted one subtunnel");
                 $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_data_received");
             },
             on_data_received => \&dccp_subtun_minimal_recv,
