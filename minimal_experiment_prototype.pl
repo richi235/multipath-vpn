@@ -65,6 +65,7 @@ use IO::Socket;
 use Socket;
 
 use Term::ANSIColor;
+use Data::Dumper;
 
 # Constants
 use constant TUN_MAX_FRAME => 4096;
@@ -98,7 +99,7 @@ my @subtun_sessions = ();
 
 $| = 1;                    # disable terminal output buffering
 my $config   = {};
-my $loglevel = 3;
+my $loglevel = 4;
 
 my $dccp_Texit  = 0;
 my $dccp_Tentry = 1;
@@ -371,6 +372,9 @@ sub setup_dccp_client
             # Put this sessions id in our global array
             push(@subtun_sessions, $_[SESSION]->ID());
             $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_input");
+            if ( $loglevel >=3 ) {
+                say("Client side: New Socket: \n" . Dumper($_[HEAP]{subtun_sock}));
+            }
         },
         on_input        => \&dccp_subtun_minimal_recv,
         on_data_to_send => \&dccp_subtun_minimal_send,
@@ -407,6 +411,10 @@ sub dccp_server_new_client {
                 say(colored("DCCP Server: ", 'bold green')
                        . "Succesfully accepted one subtunnel");
                 $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_data_received");
+                if ( $loglevel >=3 ) {
+                    say("Server side: New Connection Socket: \n"
+                            . Dumper($_[HEAP]{subtun_sock}));
+                }
             },
             on_data_received => \&dccp_subtun_minimal_recv,
             on_data_to_send => \&dccp_subtun_minimal_send,
