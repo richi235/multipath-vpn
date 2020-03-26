@@ -99,7 +99,7 @@ my @subtun_sessions = ();
 
 $| = 1;                    # disable terminal output buffering
 my $config   = {};
-my $loglevel = 4;
+my $loglevel = 3;
 
 my $dccp_Texit  = 0;
 my $dccp_Tentry = 1;
@@ -396,6 +396,11 @@ sub dccp_subtun_minimal_send
 {
     my $payload = $_[ARG0];
     $_[HEAP]->{subtun_sock}->syswrite($payload);
+    if ( $loglevel >= 4 ) {
+        say("Sending payload through socket/subtunnel: \n"
+                . Dumper($_[HEAP]{subtun_sock})
+                . "\n" );
+    }
 }
 
 sub dccp_server_new_client {
