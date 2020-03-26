@@ -270,8 +270,9 @@ sub create_tun_interface
 {
     my $heap = shift;
 
+    # true if tun interface, false if tap
     my $tun_or_tap =
-        (      ( $config->{local}->{ip} =~ /^[\d\.]+$/ )
+        (      ( $config->{local}->{ip} =~ /^[\d\.]+$/ )  # rough check if valid ip
                && ( $config->{local}->{tun_or_tap} !~ /tap/ ) ) ? 1 : 0;
 
     $heap->{tun_device} = new IO::File( TUNNEL_DEVICE, 'r+' )
