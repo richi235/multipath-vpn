@@ -152,7 +152,7 @@ sub parse_conf_file
                 subnet_size    => $line[2] || 24,
                 mtu            => $line[3] || 1300,
                 dstip          => $line[4],
-                options        => $line[5],
+                tun_or_tap        => $line[5],
             };
         }
         elsif ( $line[0] && ( lc( $line[0] ) eq "route" ) ) {
@@ -270,16 +270,16 @@ sub create_tun_interface
 {
     my $heap = shift;
 
-    my $dotun =
+    my $tun_or_tap =
         (      ( $config->{local}->{ip} =~ /^[\d\.]+$/ )
-               && ( $config->{local}->{options} !~ /tap/ ) ) ? 1 : 0;
+               && ( $config->{local}->{tun_or_tap} !~ /tap/ ) ) ? 1 : 0;
 
     $heap->{tun_device} = new IO::File( TUNNEL_DEVICE, 'r+' )
         or die "Can't open " . TUNNEL_DEVICE . ": $!";
 
     my $if_init_request = pack( STRUCT_IFREQ,
-                         $dotun ? 'tun%d' : 'tap%d',
-                         $dotun ? IFF_TUN : IFF_TAP );
+                         $tun_or_tap ? 'tun%d' : 'tap%d',
+                         $tun_or_tap ? IFF_TUN : IFF_TAP );
 
     ioctl($heap->{tun_device}, TUNSETIFF, $if_init_request)
         or die "Can't ioctl() tunnel: $!";
