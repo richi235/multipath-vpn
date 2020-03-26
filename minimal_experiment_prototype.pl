@@ -98,6 +98,7 @@ my @subtun_sessions = ();
 
 $| = 1;                    # disable terminal output buffering
 my $config   = {};
+my $loglevel = 3;
 
 my $dccp_Texit  = 0;
 my $dccp_Tentry = 1;
