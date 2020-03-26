@@ -351,35 +351,43 @@ sub start_tun_session
 
 
 
+
 sub setup_dccp_client
 {
 
     my $subtunname = shift;
     my $new_subtunnel  = $config->{subtunnels}->{$subtunname};
 
-    socket(my $con_sock, PF_INET, SOCK_DCCP, IPPROTO_DCCP)
-       or die("Can't create a dccp socket $!\n");
-
-    connect($con_sock, pack_sockaddr_in(12345, inet_aton($new_subtunnel->{dstip})))
-        or die("DCCP Client: Can't connect to server! \n");
-
-    say(colored("DCCP Client: ", 'bold green') . "Succesfully connected one subtunnel");
 
     POE::Session->create(
     inline_states => {
         _start => sub {
+        # Instantiate the socket factory
+        $_[HEAP]{socket_factory} = POE::Wheel::SocketFactory->new(
+            RemoteAddress  => $new_subtunnel->{dstip},
+            RemotePort     => 12345,
+            SuccessEvent   => "on_connection_established",
+            FailureEvent   => "on_connection_error",
+            SocketDomain   => PF_INET,
+            SocketType     => SOCK_DCCP,
+            SocketProtocol => IPPROTO_DCCP,
+        );
+        },
+        on_connection_established => sub {
             $_[HEAP]{subtun_sock} = $_[ARG0];
-            # Put this sessions id in our global array
-            push(@subtun_sessions, $_[SESSION]->ID());
             $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_input");
-            if ( $loglevel >=3 ) {
-                say("Client side: New Socket: \n" . Dumper($_[HEAP]{subtun_sock}));
-            }
+            say(colored("DCCP Client: ", 'bold green')
+                    . "Succesfully connected one subtunnel");
         },
         on_input        => \&dccp_subtun_minimal_recv,
         on_data_to_send => \&dccp_subtun_minimal_send,
-    },
-    args => [$$con_sock],
+        on_connection_error => sub {
+            my ($operation, $errnum, $errstr) = @_[ARG0, ARG1, ARG2];
+            warn("Client $operation error $errnum: $errstr\n");
+            delete $_[HEAP]{socket_factory};
+            delete $_[HEAP]{subtun_sock};
+        },
+    }
     );
 
 }
