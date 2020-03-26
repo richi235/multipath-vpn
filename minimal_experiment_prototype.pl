@@ -360,19 +360,6 @@ sub start_tun_session
 
 
 
-sub create_dccp_listen_socket
-{
-    socket(my $listen_sock, PF_INET, SOCK_DCCP, IPPROTO_DCCP)
-        or die "Can't open socket $!\n";
-
-#    bind( $listen_sock, pack_sockaddr_in($port, inet_aton($server)))
-#        or die "Can't bind to port $port! \n";
-
-    listen($listen_sock, 5) or die "listen: $!";
-}
-
-
-
 sub setup_dccp_client
 {
 
