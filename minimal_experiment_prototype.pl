@@ -151,8 +151,7 @@ sub parse_conf_file
                 ip             => $line[1],
                 subnet_size    => $line[2] || 24,
                 mtu            => $line[3] || 1300,
-                dstip          => $line[4],
-                tun_or_tap        => $line[5],
+                tun_or_tap        => $line[4],
             };
         }
         elsif ( $line[0] && ( lc( $line[0] ) eq "route" ) ) {
@@ -311,18 +310,6 @@ sub config_tun_interface
     # if not do something obscure with bridge interfaces
         system( "ifconfig " . $heap->{tun_if_name} . " up" );
         system( "brctl", "addif", $config->{local}->{ip}, $heap->{tun_if_name} );
-    }
-
-    if (( $config->{local}->{dstip} )) {
-        system( "ifconfig "
-            . $heap->{tun_if_name}
-            . " dstaddr "
-            . $config->{local}->{dstip} );
-        # From ifconfig manpage:
-        # dstaddr addr
-        #
-        # Set the remote IP address for a point-to-point link (such as PPP).
-        # This keyword is now obsolete; use the pointopoint keyword instead.
     }
 
     # Set PMTU Clamping
