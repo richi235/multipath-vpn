@@ -375,9 +375,14 @@ sub setup_dccp_client
         },
         on_connection_established => sub {
             $_[HEAP]{subtun_sock} = $_[ARG0];
+            # Put this sessions id in our global array
+            push(@subtun_sessions, $_[SESSION]->ID());
             $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_input");
-            say(colored("DCCP Client: ", 'bold green')
+            if ( $loglevel >=3 ) {
+                say(colored("DCCP Client: ", 'bold green')
                     . "Succesfully connected one subtunnel");
+                say(Dumper($_[HEAP]{subtun_sock}));
+            }
         },
         on_input        => \&dccp_subtun_minimal_recv,
         on_data_to_send => \&dccp_subtun_minimal_send,
