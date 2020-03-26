@@ -129,7 +129,7 @@ sub parse_conf_file
         s/\#.*$//gi;      # delete all comments
         next if m,^\s*$,; # next if we're in a now deleted line
 
-        my @line = split( /\t/, $_ );
+        my @line = split( /\s+/, $_ );
 
         if ( $line[0] && ( lc( $line[0] ) eq "link" ) )
         {
