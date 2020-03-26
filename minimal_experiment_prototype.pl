@@ -93,22 +93,11 @@ use constant IPPROTO_DCCP   => 33;
 
 # Global Variables
 my $sessions   = {};
+my $tuntap_session = undef;
 my @subtun_sessions = ();
-my $doCrypt    = 0;
-my $doPrepend  = undef;    # "abcdefghikjlmnopqrstuvwxyz";
-my $doBase64   = 0;
-my $printdebug = 0;
 
 $| = 1;                    # disable terminal output buffering
-my $looktime   = 5;
-my $no_dead_peer = 0;
-my $up         = 0;
-
-my $tuntap_session = undef;
-
 my $config   = {};
-my $seen     = {};
-my $lastseen = {};
 
 my $dccp_Texit  = 0;
 my $dccp_Tentry = 1;
