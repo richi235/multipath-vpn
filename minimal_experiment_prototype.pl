@@ -57,7 +57,7 @@ use v5.10;
 
 use POE;
 use POE
-  qw(Filter::Block XS::Loop::Poll Filter::Stream);
+  qw(Wheel::SocketFactory XS::Loop::Poll);
 
 use IO::File;
 use IO::Interface::Simple;
