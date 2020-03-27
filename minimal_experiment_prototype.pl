@@ -250,7 +250,11 @@ sub send_scheduler
         # We're finally sending the packet
         $_[KERNEL]->call( $subtun_sessions[$current_subtun_id], "on_data_to_send", $buf );
     }
-    say( "Just sent 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels" );
+
+    if ( $loglevel >= 4) {
+        say( "Just sent 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels" );
+    }
+
     $current_subtun_id = ($current_subtun_id+1) % $subtun_count;
 }
 
