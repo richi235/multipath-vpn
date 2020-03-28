@@ -232,7 +232,14 @@ sub set_via_tunnel_routes
     }
 }
 
-sub send_scheduler
+sub send_scheduler_afmt_fl
+{
+
+
+}
+
+
+sub send_scheduler_rr
 {
     # State is same as static for local variables in C
     # Value of variables is persistent between function calls, because stored on the heap
@@ -240,7 +247,7 @@ sub send_scheduler
     my $subtun_count = @subtun_sessions;
 
     if ( $subtun_count == 0) {
-        say("  send_scheduler called with no subtunnels???");
+        say("  send_scheduler_rr called with no subtunnels???");
         return;
     }
 
@@ -489,7 +496,7 @@ if ( $dccp_Tentry) {
 POE::Session->create(
     inline_states => {
         _start => \&start_tun_session,
-        got_packet_from_tun_device => \&send_scheduler,
+        got_packet_from_tun_device => \&send_scheduler_rr,
         put_into_tun_device => \&tuntap_take,
     }
 );
