@@ -62,7 +62,6 @@ use POE
 use IO::File;
 use IO::Interface::Simple;
 use IO::Socket;
-use Socket;
 
 use Term::ANSIColor;
 use Data::Dumper;
