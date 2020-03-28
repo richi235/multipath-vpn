@@ -96,6 +96,7 @@ use constant IPPROTO_DCCP   => 33;
 my $sessions   = {};
 my $tuntap_session = undef;
 my @subtun_sessions = ();
+my @subtun_sockets  = ();
 
 $| = 1;                    # disable terminal output buffering
 my $config   = {};
@@ -368,7 +369,9 @@ sub setup_dccp_client
         on_connection_established => sub {
             $_[HEAP]{subtun_sock} = $_[ARG0];
             # Put this sessions id in our global array
+            # And the corresponding subtun socket in a second array, at same index number
             push(@subtun_sessions, $_[SESSION]->ID());
+            push(@subtun_sockets, $_[ARG0]);
             $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_input");
             if ( $loglevel >=3 ) {
                 say(colored("DCCP Client: ", 'bold green')
@@ -417,7 +420,9 @@ sub dccp_server_new_client {
             _start    => sub {
                 $_[HEAP]{subtun_sock} = $_[ARG0];
                 # Put this session's id in our global array
+                # And the corresponding subtun socket in a second array, at same index number
                 push(@subtun_sessions, $_[SESSION]->ID());
+                push(@subtun_sockets, $_[ARG0]);
                 say(colored("DCCP Server: ", 'bold green')
                        . "Succesfully accepted one subtunnel");
                 $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_data_received");
