@@ -260,6 +260,9 @@ sub send_scheduler_rr
 
     if ( $loglevel >= 4) {
         say( "Just sent 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels" );
+        my $sock_sendbuffer_fill;
+        $subtun_sockets[$current_subtun_id]->ioctl(SIOCOUTQ, $sock_sendbuffer_fill);
+        say($sock_sendbuffer_fill);
     }
 
     $current_subtun_id = ($current_subtun_id+1) % $subtun_count;
