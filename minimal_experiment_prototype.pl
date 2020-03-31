@@ -93,15 +93,11 @@ __u32
 
 which is in pack() template syntax: QQLLLLL
 
-So creating a new nulled struct is:
+So creating a new nulled struct is: 
 
-my $empty_dccp_info = pack('QQLLLLL', "000000000000000000000000000" );
+  my $empty_dccp_info = pack('QQLLLLL');
 
-
-### Way 2: Using Convert::Binary::C
-
-It's way simpler Convert::Binary::C can just read the C struct definiton,
-and then supplies a pack and unpack function fitting for it.
+(because pack 0 pads if there's no input data)
 
 =head1 Doc of some Functions:
 
@@ -125,7 +121,6 @@ use IO::Socket;
 
 use Term::ANSIColor;
 use Data::Dumper;
-use Convert::Binary::C;
 
 # Constants
 use constant TUN_MAX_FRAME => 4096;
@@ -167,35 +162,6 @@ my $dccp_Tentry = 1;
 
 ### Signal Handlers ###
 $SIG{INT} = sub { die "Caught a SIGINT Signal. Current Errno: $!" };
-
-## Feed Convert::Binary::C with the C struct definition of our getsockopt dccp_info type:
-my $c_types = Convert::Binary::C->new->parse(<<ENDC);
- 
-/**
- * struct ccid3_hc_tx_sock - CCID3 sender half-connection socket
- * @tx_x:		  Current sending rate in 64 * bytes per second
- * @tx_x_recv:		  Receive rate in 64 * bytes per second
- * @tx_x_calc:		  Calculated rate in bytes per second
- * @tx_rtt:		  Estimate of current round trip time in usecs
- * @tx_p:		  Current loss event rate (0-1) scaled by 1000000
- * @tx_s:		  Packet size in bytes
- * @tx_t_rto:		  Nofeedback Timer setting in usecs
- * @tx_t_ipi:		  Interpacket (send) interval (RFC 3448, 4.6) in usecs
- * @tx_state:		  Sender state, one of %ccid3_hc_tx_states
- * @tx_last_win_count:	  Last window counter sent
- * @tx_t_last_win_count:  Timestamp of earliest packet
- */
-struct tfrc_tx_info {
-    __u64 tfrctx_x;
-    __u64 tfrctx_x_recv;
-    __u32 tfrctx_x_calc;
-    __u32 tfrctx_rtt;
-    __u32 tfrctx_p;
-    __u32 tfrctx_rto;
-    __u32 tfrctx_ipi;
-};
- 
-ENDC
 
 
 ####### Section 1 START: Function Definitions #############
