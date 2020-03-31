@@ -139,7 +139,7 @@ use constant IFF_NO_PI     => 0x1000;
 use constant IFF_ONE_QUEUE => 0x2000;
 use constant TUN_PKT_STRIP => 0x0001;
 
-use constant STRUCT_IFREQ  => 'Z16 s';
+use constant STRUCT_IFREQ  => 'Z16 s'; # byte representation template for pack()
 use constant TUNNEL_DEVICE => '/dev/net/tun';
 
 ## Constants for DCCP
@@ -353,6 +353,8 @@ sub create_tun_interface
     ioctl($heap->{tun_device}, TUNSETIFF, $if_init_request)
         or die "Can't ioctl() tunnel: $!";
 
+    # When called in scalar context, unpack returns only the first member of the unpacked data
+    # which is conveniently here, the exact name the tun interface got.
     $heap->{tun_if_name} = unpack(STRUCT_IFREQ, $if_init_request);
     print( "Interface " . $heap->{tun_if_name} . " up!\n");
 }
