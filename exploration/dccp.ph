@@ -20,5 +20,6 @@ unless(defined(&DCCP_DCCP_H)) {
     eval 'sub DCCP_SOCKOPT_QPOLICY_TXQLEN () {17;}' unless defined(&DCCP_SOCKOPT_QPOLICY_TXQLEN);
     eval 'sub DCCP_SOCKOPT_CCID_RX_INFO () {128;}' unless defined(&DCCP_SOCKOPT_CCID_RX_INFO);
     eval 'sub DCCP_SOCKOPT_CCID_TX_INFO () {192;}' unless defined(&DCCP_SOCKOPT_CCID_TX_INFO);
+    eval 'sub DCCP_SOCKOPT_CCID_TX_INFO () {192;}' unless defined(&DCCP_SOCKOPT_CCID_TX_INFO);
 }
 1;
