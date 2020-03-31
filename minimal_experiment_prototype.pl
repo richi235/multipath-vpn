@@ -42,6 +42,67 @@ It handles all events corresponding to sending packets to other Multipath VPN no
 Therefore this sessions takes TCP/UDP packets from the tun/tap interface, wraps them into UDP
 and delivers them to the other multipath VPN node configured in the conf file.
 
+=head3 [About the DCCP Info truct]
+
+To get the dccp internals via getsockopt on a dccp socket you need the following call:
+
+  sock->Getsockopt(SOL_DCCP, DCCP_SOCKOPT_CCID_TX_INFO, &dccp_info, &dccp_info_len);
+
+where dccp_info is a struct of the following type:
+
+/**
+ * struct ccid3_hc_tx_sock - CCID3 sender half-connection socket
+ * @tx_x:		  Current sending rate in 64 * bytes per second
+ * @tx_x_recv:		  Receive rate in 64 * bytes per second
+ * @tx_x_calc:		  Calculated rate in bytes per second
+ * @tx_rtt:		  Estimate of current round trip time in usecs
+ * @tx_p:		  Current loss event rate (0-1) scaled by 1000000
+ * @tx_s:		  Packet size in bytes
+ * @tx_t_rto:		  Nofeedback Timer setting in usecs
+ * @tx_t_ipi:		  Interpacket (send) interval (RFC 3448, 4.6) in usecs
+ * @tx_state:		  Sender state, one of %ccid3_hc_tx_states
+ * @tx_last_win_count:	  Last window counter sent
+ * @tx_t_last_win_count:  Timestamp of earliest packet
+ */
+struct tfrc_tx_info {
+    __u64 tfrctx_x;
+    __u64 tfrctx_x_recv;
+    __u32 tfrctx_x_calc;
+    __u32 tfrctx_rtt;
+    __u32 tfrctx_p;
+    __u32 tfrctx_rto;
+    __u32 tfrctx_ipi;
+};
+
+and:
+
+#define DCCP_SOCKOPT_CCID_TX_INFO       192
+
+### Way 1: Using pack() and unpack()
+
+To create and read such a struct with perl we need, pack und unpack. More precise the
+a pack template that describes the types:
+
+__u64
+__u64
+__u32
+__u32
+__u32
+__u32
+__u32
+
+which is in pack() template syntax: QQLLLLL
+
+So creating a new nulled struct is:
+
+my $empty_dccp_info = pack('QQLLLLL', "000000000000000000000000000" );
+
+
+### Way 2: Using Convert::Binary::C
+
+It's way simpler Convert::Binary::C can just read the C struct definiton,
+and then supplies a pack and unpack function fitting for it.
+
 =head1 Doc of some Functions:
 
 =cut
