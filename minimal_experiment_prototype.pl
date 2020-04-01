@@ -333,13 +333,9 @@ sub send_scheduler_rr
         # 3. call getsockopt()
         # 4. Get the cwnd from the now filled struct
         #    - unpack, and then?
-        my $dccp_info_struct = pack('QQLLLLL', "0" );
-        my $dccp_info_len = 36; # always same because all fields are fixed byte size
-        $subtun_sockets[$current_subtun_id]->getsockopt(
+        my $dccp_info_struct = $subtun_sockets[$current_subtun_id]->getsockopt(
             SOL_DCCP,
             DCCP_SOCKOPT_CCID_TX_INFO,
-            $dccp_info_struct,
-            $dccp_info_len
             );
 
         my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate, $rto, $ipi)
