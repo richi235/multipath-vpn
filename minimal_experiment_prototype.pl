@@ -161,7 +161,6 @@ my $config   = {};
 my $loglevel = 3;
 
 my $dccp_Texit  = 0;
-my $dccp_Tentry = 1;
 
 ### Signal Handlers ###
 $SIG{INT} = sub { die "Caught a SIGINT Signal. Current Errno: $!" };
@@ -572,7 +571,7 @@ if ( $dccp_Texit) {
     );
 }
 
-if ( $dccp_Tentry) {
+if ( !$dccp_Texit) {
     for my $subtun_name ( keys %{ $config->{subtunnels} } )
     {
         setup_dccp_client($subtun_name);
