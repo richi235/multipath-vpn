@@ -95,7 +95,7 @@ which is in pack() template syntax: QQLLLLL
 
 So creating a new nulled struct is: 
 
-  my $empty_dccp_info = pack('QQLLLLL');
+  my $dccp_info_struct = pack('QQLLLLL');
 
 (because pack 0 pads if there's no input data)
 
@@ -318,9 +318,36 @@ sub send_scheduler_rr
 
     if ( $loglevel >= 4) {
         say( "Just sent 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels" );
+
+        # Get sock fill
         my $sock_sendbuffer_fill;
         $subtun_sockets[$current_subtun_id]->ioctl(SIOCOUTQ, $sock_sendbuffer_fill);
         say($sock_sendbuffer_fill);
+
+        # Get cwnd
+        # Steps: (details siehe perldoc Convert::Binary::C )
+        # 1. initialize an zeroed dccp_info struct (or its perl version)
+        #    - festgestellt: initialize() macht doch nicht was ich will (returned nur C code strings mit denen mans initilizen könnte)
+        #      - aber pack() schen (wenn input data fehlt, füllt er es einfach mit 0en auf)
+        # 2. get its len 
+        # 3. call getsockopt()
+        # 4. Get the cwnd from the now filled struct
+        #    - unpack, and then?
+        my $dccp_info_struct = pack('QQLLLLL', "0" );
+        my $dccp_info_len = 36; # always same because all fields are fixed byte size
+        $subtun_sockets[$current_subtun_id]->getsockopt(
+            SOL_DCCP,
+            DCCP_SOCKOPT_CCID_TX_INFO,
+            $dccp_info_struct,
+            $dccp_info_len
+            );
+
+        my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate, $rto, $ipi)
+            = unpack('QQLLLLL', $dccp_info_struct);
+
+        say($send_rate);
+        say($srtt);
+
     }
 
     $current_subtun_id = ($current_subtun_id+1) % $subtun_count;
