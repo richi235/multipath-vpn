@@ -300,6 +300,7 @@ sub send_scheduler_rr
     # State is same as static for local variables in C
     # Value of variables is persistent between function calls, because stored on the heap
     state $current_subtun_id = 0;
+    my $cur_subtun = $subtun_sockets[$current_subtun_id];
     my $subtun_count = @subtun_sessions;
 
     if ( $subtun_count == 0) {
@@ -320,19 +321,15 @@ sub send_scheduler_rr
 
         # Get sock fill
         my $sock_sendbuffer_fill;
-        $subtun_sockets[$current_subtun_id]->ioctl(SIOCOUTQ, $sock_sendbuffer_fill);
+        ioctl($cur_subtun, SIOCOUTQ, $sock_sendbuffer_fill);
         say($sock_sendbuffer_fill);
 
         # Get cwnd
-        # Steps: (details siehe perldoc Convert::Binary::C )
-        # 1. initialize an zeroed dccp_info struct (or its perl version)
-        #    - festgestellt: initialize() macht doch nicht was ich will (returned nur C code strings mit denen mans initilizen könnte)
-        #      - aber pack() schen (wenn input data fehlt, füllt er es einfach mit 0en auf)
-        # 2. get its len 
-        # 3. call getsockopt()
-        # 4. Get the cwnd from the now filled struct
+        # Steps: 
+        # 1. call getsockopt()
+        # 2. Get the cwnd from the now filled struct
         #    - unpack, and then?
-        my $dccp_info_struct = $subtun_sockets[$current_subtun_id]->getsockopt(
+        my $dccp_info_struct = getsockopt($cur_subtun,
             SOL_DCCP,
             DCCP_SOCKOPT_CCID_TX_INFO,
             );
@@ -459,13 +456,10 @@ sub setup_dccp_client
         },
         on_connection_established => sub {
             $_[HEAP]{subtun_sock} = $_[ARG0];
-            # ARG0 is a IO::File, we need to re-bless it because we need ->getsockpt()
-            # later which is a IO::Socket call
-            bless($_[HEAP]{subtun_sock}, "IO::Socket");
             # Put this sessions id in our global array
             # And the corresponding subtun socket in a second array, at same index number
             push(@subtun_sessions, $_[SESSION]->ID());
-            push(@subtun_sockets, $_[HEAP]{subtun_sock} );
+            push(@subtun_sockets, $_[ARG0]);
             $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_input");
             if ( $loglevel >=3 ) {
                 say(colored("DCCP Client: ", 'bold green')
@@ -513,15 +507,10 @@ sub dccp_server_new_client {
         inline_states => {
             _start    => sub {
                 $_[HEAP]{subtun_sock} = $_[ARG0];
-                # ARG0 is a IO::File, we need to re-bless it because we need ->getsockpt()
-                # later which is a IO::Socket call
-                bless($_[HEAP]{subtun_sock}, "IO::Socket");
-
                 # Put this session's id in our global array
                 # And the corresponding subtun socket in a second array, at same index number
                 push(@subtun_sessions, $_[SESSION]->ID());
-                push(@subtun_sockets, $_[HEAP]{subtun_sock});
-
+                push(@subtun_sockets, $_[ARG0]);
                 say(colored("DCCP Server: ", 'bold green')
                        . "Succesfully accepted one subtunnel");
                 $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_data_received");
