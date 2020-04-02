@@ -3,9 +3,13 @@
 use strict;
 use warnings;
 use Socket;
+use v5.10;
 
+## Constants for DCCP
 use constant SOCK_DCCP      =>  6;
 use constant IPPROTO_DCCP   => 33;
+use constant DCCP_SOCKOPT_CCID_TX_INFO  => 192;
+use constant SOL_DCCP       => 269;
 
 # use port 7890 as default
 my $port = shift || 7890;
@@ -31,5 +35,17 @@ while ($client_addr = accept(NEW_SOCKET, $listen_sock)) {
    my $name = gethostbyaddr($client_addr, AF_INET );
    print NEW_SOCKET "Smile from the server";
    print "Connection recieved from $name\n";
+   my $dccp_info_struct = getsockopt(NEW_SOCKET, 
+                                     SOL_DCCP,
+                                     DCCP_SOCKOPT_CCID_TX_INFO,);
+   if (!defined($dccp_info_struct)) {
+       say $!;
+   }
+
+   my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate, $rto, $ipi)
+       = unpack('QQLLLLL', $dccp_info_struct);
+
+   say($send_rate);
+   say($srtt);
    close NEW_SOCKET;
 }

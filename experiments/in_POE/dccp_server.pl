@@ -2,12 +2,15 @@
 
 use warnings;
 use strict;
+use v5.10;
 
 use IO::Socket;
 use POE qw(Wheel::SocketFactory Wheel::ReadWrite);
 
 use constant SOCK_DCCP      =>  6;
 use constant IPPROTO_DCCP   => 33;
+use constant DCCP_SOCKOPT_CCID_TX_INFO  => 192;
+use constant SOL_DCCP       => 269;
 
 POE::Session->create(
   inline_states => {
@@ -30,6 +33,7 @@ POE::Session->create(
         InputEvent => "on_client_input",
         ErrorEvent => "on_client_error",
       );
+      $_[HEAP]{con_sock} = $client_socket;
       $_[HEAP]{client}{ $io_wheel->ID() } = $io_wheel;
     },
     on_server_error => sub {
@@ -42,7 +46,20 @@ POE::Session->create(
       # Handle client input.
       my ($input, $wheel_id) = @_[ARG0, ARG1];
       $input =~ tr[a-zA-Z][n-za-mN-ZA-M]; # ASCII rot13
+      my $dccp_info_struct = getsockopt($_[HEAP]{con_sock},
+                                     SOL_DCCP,
+                                     DCCP_SOCKOPT_CCID_TX_INFO,);
+      if (!defined($dccp_info_struct)) {
+          say $!;
+      }
+
+      my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate, $rto, $ipi)
+          = unpack('QQLLLLL', $dccp_info_struct);
+
+      say($send_rate);
+      say($srtt);
       $_[HEAP]{client}{$wheel_id}->put($input);
+
     },
     on_client_error => sub {
       # Handle client error, including disconnect.

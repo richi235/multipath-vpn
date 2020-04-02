@@ -14,7 +14,7 @@ POE::Session->create(
     _start => sub {
       # Start the server.
       $_[HEAP]{server} = POE::Wheel::SocketFactory->new(
-        RemoteAddress  => "1.0.0.2",
+        RemoteAddress  => "127.0.0.1",
         RemotePort     => 12345,
         SuccessEvent   => "on_connection_established",
         FailureEvent   => "on_connection_error",
