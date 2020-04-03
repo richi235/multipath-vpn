@@ -321,8 +321,13 @@ sub send_scheduler_rr
 
         # Get sock fill
         my $sock_sendbuffer_fill;
-        ioctl($cur_subtun, SIOCOUTQ, $sock_sendbuffer_fill);
-        say($sock_sendbuffer_fill);
+	my $retval = ioctl($cur_subtun, SIOCOUTQ, $sock_sendbuffer_fill); 
+        if (!defined($retval)) {
+	    say($!);
+	} else {
+	    say($sock_sendbuffer_fill);
+	}	
+
 
         # Get cwnd
         # Steps: 
@@ -331,8 +336,9 @@ sub send_scheduler_rr
         #    - unpack, and then?
         my $dccp_info_struct = getsockopt($cur_subtun,
             SOL_DCCP,
-            DCCP_SOCKOPT_CCID_TX_INFO,
+            DCCP_SOCKOPT_CCID_TX_INFO
             );
+	say($!) if (!defined($dccp_info_struct));
 
         my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate, $rto, $ipi)
             = unpack('QQLLLLL', $dccp_info_struct);
