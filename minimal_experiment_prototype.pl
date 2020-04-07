@@ -317,17 +317,17 @@ sub send_scheduler_rr
     }
 
     if ( $loglevel >= 4) {
-        say( "Just sent 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels" );
 
-        # Get sock fill
-        my $sock_sendbuffer_fill = "";
-	my $retval = ioctl($cur_subtun, SIOCOUTQ, $sock_sendbuffer_fill); 
+        # Get sock send buffer fill
+        my $ioctl_binary_return_buffer = "";
+        my $sock_sendbuffer_fill;
+	my $retval = ioctl($cur_subtun, SIOCOUTQ, $ioctl_binary_return_buffer); 
         if (!defined($retval)) {
 	    say($!);
 	} else {
-	    say(unpack("i", $sock_sendbuffer_fill));
-	}	
-
+	    # say(unpack("i", $ioctl_binary_return_buffer));
+            $sock_sendbuffer_fill = unpack("i", $ioctl_binary_return_buffer);
+	}
 
         # Get cwnd
         # Steps: 
@@ -343,8 +343,10 @@ sub send_scheduler_rr
         my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate, $rto, $ipi)
             = unpack('QQLLLLL', $dccp_info_struct);
 
-        say($send_rate);
-        say($srtt);
+        say( "Just sent 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels" );
+        say("Send rate:            " . $send_rate . "\n"
+            "Sock sendbuffer fill: " . $sock_sendbuffer_fill . "\n"
+            "SRTT:                 " . $srtt);
 
     }
 
