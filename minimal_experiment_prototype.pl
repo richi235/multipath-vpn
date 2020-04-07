@@ -320,12 +320,12 @@ sub send_scheduler_rr
         say( "Just sent 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels" );
 
         # Get sock fill
-        my $sock_sendbuffer_fill;
+        my $sock_sendbuffer_fill = "";
 	my $retval = ioctl($cur_subtun, SIOCOUTQ, $sock_sendbuffer_fill); 
         if (!defined($retval)) {
 	    say($!);
 	} else {
-	    say($sock_sendbuffer_fill);
+	    say(unpack("i", $sock_sendbuffer_fill));
 	}	
 
 
