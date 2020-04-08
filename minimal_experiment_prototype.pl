@@ -343,7 +343,7 @@ sub send_scheduler_rr
         my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate, $rto, $ipi)
             = unpack('QQLLLLL', $dccp_info_struct);
 
-        say("Just sent 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels\n" .
+        say("Just scheduled 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels\n" .
             "Send rate:            " . $send_rate . "\n" .
             "Sock sendbuffer fill: " . $sock_sendbuffer_fill . "\n" .
             "SRTT:                 " . $srtt);
@@ -501,9 +501,7 @@ sub dccp_subtun_minimal_send
     my $payload = $_[ARG0];
     $_[HEAP]->{subtun_sock}->syswrite($payload);
     if ( $loglevel >= 4 ) {
-        say("Sending payload through socket/subtunnel: \n"
-                . Dumper($_[HEAP]{subtun_sock})
-                . "\n" );
+        say("Sending payload through socket/subtunnel: \n");
     }
 }
 
