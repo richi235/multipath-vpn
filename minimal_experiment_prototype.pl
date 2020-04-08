@@ -498,7 +498,7 @@ sub setup_dccp_client
 sub dccp_subtun_minimal_recv
 {
     my $curinput = undef;
-    $_[HEAP]{subtun_sock}->sysread($curinput, 1600);
+    $_[HEAP]{subtun_sock}->sysread($curinput, 1500);
     $_[KERNEL]->call($tuntap_session => "put_into_tun_device", $curinput);
 }
 
