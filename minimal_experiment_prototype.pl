@@ -318,7 +318,7 @@ sub send_scheduler_rr
 
     # read data from the tun device
     my $buf;
-    sysread( $_[HEAP]->{tun_device}, $buf , $config->{local}->{mtu} )
+    sysread( $_[HEAP]->{tun_device}, $buf , $config->{local}->{mtu} );
     # We're finally sending the packet
     $_[KERNEL]->call( $subtun_sessions[$current_subtun_id], "on_data_to_send", $buf );
 
