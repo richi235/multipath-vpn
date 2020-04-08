@@ -316,12 +316,6 @@ sub send_scheduler_rr
         return;
     }
 
-    # read data from the tun device
-    my $buf;
-    sysread( $_[HEAP]->{tun_device}, $buf , $config->{local}->{mtu} );
-    # We're finally sending the packet
-    $_[KERNEL]->call( $subtun_sessions[$current_subtun_id], "on_data_to_send", $buf );
-
     if ( $loglevel >= 4) {
 
         # Get sock send buffer fill
@@ -355,6 +349,11 @@ sub send_scheduler_rr
             "SRTT:                 " . $srtt);
 
     }
+
+    # Finally taking the packet from tun device and sending it
+    my $buf;
+    sysread( $_[HEAP]->{tun_device}, $buf , $config->{local}->{mtu} );
+    $_[KERNEL]->call( $subtun_sessions[$current_subtun_id], "on_data_to_send", $buf );
 
     $current_subtun_id = ($current_subtun_id+1) % $subtun_count;
 }
@@ -507,7 +506,7 @@ sub dccp_subtun_minimal_send
     my $payload = $_[ARG0];
     $_[HEAP]->{subtun_sock}->syswrite($payload);
     if ( $loglevel >= 4 ) {
-        say("Sending payload through socket/subtunnel: \n");
+        say("Sending payload through subtunnel \n");
     }
 }
 
