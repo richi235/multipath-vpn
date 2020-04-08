@@ -419,14 +419,14 @@ sub config_tun_interface
         system( "brctl", "addif", $config->{local}->{ip}, $heap->{tun_if_name} );
     }
 
-    # Set PMTU Clamping
-    if (( $config->{local}->{mtu} )) {
-        system( "iptables -A FORWARD -o "
-            . $heap->{tun_if_name}
-            . " -p tcp -m tcp --tcp-flags SYN,RST SYN -m tcpmss --mss "
-            . ( $config->{local}->{mtu} - 40 )
-            . ":65495 -j TCPMSS --clamp-mss-to-pmtu" );
-    }
+    # # Set PMTU Clamping
+    # if (( $config->{local}->{mtu} )) {
+    #     system( "iptables -A FORWARD -o "
+    #         . $heap->{tun_if_name}
+    #         . " -p tcp -m tcp --tcp-flags SYN,RST SYN -m tcpmss --mss "
+    #         . ( $config->{local}->{mtu} - 40 )
+    #         . ":65495 -j TCPMSS --clamp-mss-to-pmtu" );
+    # }
 
     # Set MTU
     system( "ifconfig " . $heap->{tun_if_name} . " mtu " . $config->{local}->{mtu} );
