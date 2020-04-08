@@ -121,6 +121,8 @@ use IO::Socket;
 
 use Term::ANSIColor;
 use Data::Dumper;
+use Getopt::Long;
+
 
 # Constants
 use constant TUN_MAX_FRAME => 4096;
@@ -159,6 +161,7 @@ my @subtun_sockets  = ();
 $| = 1;                    # disable terminal output buffering
 my $config   = {};
 my $loglevel = 3;
+my $conf_file_name = "/etc/multivpn.cfg";
 
 my $dccp_Texit  = 0;
 
@@ -167,6 +170,11 @@ $SIG{INT} = sub { die "Caught a SIGINT Signal. Current Errno: $!" };
 
 
 ####### Section 1 START: Function Definitions #############
+sub parse_cli_args
+{
+    GetOptions('loglevel|l=i' => \$loglevel,
+               'c|conf=s'     => \$conf_file_name );
+}
 
 
 # modifies the global variable $config (a dictionary)
@@ -176,7 +184,7 @@ $SIG{INT} = sub { die "Caught a SIGINT Signal. Current Errno: $!" };
 sub parse_conf_file
 {
     # open config file
-    open( my $conf_file, "<", $ARGV[0] || "/etc/multivpn.cfg" )
+    open( my $conf_file, "<", $conf_file_name )
     || die "Config file not found: " . $!;
 
     # read and parse config file (linewise)
@@ -531,6 +539,7 @@ sub dccp_server_new_client {
 }
 ####### Section 1 END: Function Definitions #############
 
+parse_cli_args();
 parse_conf_file();
 
 # DCCP listen socket session
