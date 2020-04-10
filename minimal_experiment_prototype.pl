@@ -301,10 +301,20 @@ sub send_scheduler_afmt_fl
 
 
 }
-
+sub tun_read {
+    my $buf;
+    while(sysread($_[HEAP]->{tun_device}, $buf , $config->{local}->{mtu} ))
+    {
+        send_scheduler_rr($buf);
+    }
+}
 
 sub send_scheduler_rr
 {
+    # we only get 1 parameter: a network packet ~1500 bytes
+    # we're not using shift but $_[0] (see below, in the $kernel->call(...))
+    # to avoid copying the full 1500 bytes
+
     # State is same as static for local variables in C
     # Value of variables is persistent between function calls, because stored on the heap
     state $current_subtun_id = 0;
@@ -350,12 +360,10 @@ sub send_scheduler_rr
 
     }
 
-    # Finally taking the packet from tun device and sending it
-    my $buf;
-    sysread( $_[HEAP]->{tun_device}, $buf , TUN_MAX_FRAME );
-    $_[KERNEL]->call( $subtun_sessions[$current_subtun_id], "on_data_to_send", $buf );
+    $poe_kernel->call( $subtun_sessions[$current_subtun_id], "on_data_to_send", $_[0] );
 
     $current_subtun_id = ($current_subtun_id+1) % $subtun_count;
+    return;
 }
 
 # Receives from a subtunnel and puts into tun/tap device
@@ -589,7 +597,7 @@ if ( !$dccp_Texit) {
 POE::Session->create(
     inline_states => {
         _start => \&start_tun_session,
-        got_packet_from_tun_device => \&send_scheduler_rr,
+        got_packet_from_tun_device => \&tun_read,
         put_into_tun_device => \&tuntap_take,
     }
 );
