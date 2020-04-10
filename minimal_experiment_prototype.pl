@@ -352,7 +352,7 @@ sub send_scheduler_rr
 
     # Finally taking the packet from tun device and sending it
     my $buf;
-    sysread( $_[HEAP]->{tun_device}, $buf , $config->{local}->{mtu} );
+    sysread( $_[HEAP]->{tun_device}, $buf , TUN_MAX_FRAME );
     $_[KERNEL]->call( $subtun_sessions[$current_subtun_id], "on_data_to_send", $buf );
 
     $current_subtun_id = ($current_subtun_id+1) % $subtun_count;
@@ -497,7 +497,7 @@ sub setup_dccp_client
 sub dccp_subtun_minimal_recv
 {
     my $curinput = undef;
-    $_[HEAP]{subtun_sock}->sysread($curinput, 1500);
+    $_[HEAP]{subtun_sock}->sysread($curinput, 1600);
     $_[KERNEL]->call($tuntap_session => "put_into_tun_device", $curinput);
 }
 
