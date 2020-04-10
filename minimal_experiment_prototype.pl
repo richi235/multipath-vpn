@@ -354,6 +354,7 @@ sub send_scheduler_rr
             = unpack('QQLLLLL', $dccp_info_struct);
 
         say("Just scheduled 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels\n" .
+            "Packet size:          " . bytes::length($_[0]) . "\n" .
             "Send rate:            " . $send_rate . "\n" .
             "Sock sendbuffer fill: " . $sock_sendbuffer_fill . "\n" .
             "SRTT:                 " . $srtt);
