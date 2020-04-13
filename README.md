@@ -17,7 +17,7 @@ Like OpenVPN, but with multiple links from Client to Server.
 git clone https://github.com/richi235/Reinhard-VPN
 
 # installing the required perl modules:
-apt install libpoe-perl build-essential
+apt install libpoe-perl build-essential libnetpacket-perl
 cpan POE::Wheel::UDP IO::Interface::Simple POE::XS::Loop::Poll
 
 # copy the config
