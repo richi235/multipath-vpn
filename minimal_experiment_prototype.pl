@@ -168,6 +168,25 @@ my $conf_file_name = "/etc/multivpn.cfg";
 
 my $dccp_Texit  = 0;
 
+# (src_ip, src_port, dest_ip, dest_port) tupel is concatenated to a string (in exactly that order)
+# and serves as key.
+# An simple incrementally chosen int serves as value and flow id.
+my %tupel_to_id
+my $max_flow_id = 0;
+
+# The AFMT flow table:
+# | Key     |  Value pair |
+# | flow_id | (last_subtunnel, timestamp) |
+
+# How to represent in perl?
+# naive approach:
+#   hash : flow id --> array ref of last_subtunnel, timestamp
+# will be using for now
+my %flow_table;
+
+
+
+
 ### Signal Handlers ###
 $SIG{INT} = sub { die "Caught a SIGINT Signal. Current Errno: $!" };
 
@@ -299,9 +318,52 @@ sub set_via_tunnel_routes
     }
 }
 
+# returns: flow id
+# param1: ref to packet byte string
+sub get_flow_id
+{
+    # parse the packet
+    my $ip_obj = NetPacket::IP->decode(($_[1]));
+    say("$ip_obj->{src_ip} : $ip_obj->{dest_ip} : $ip_obj->{proto}" );
+
+    my ($src_port, $dest_port);
+
+    if ( $ip_obj->{proto} ==IP_PROTO_TCP ) {
+        my $tcp_obj = NetPacket::TCP->decode($ip_obj->{data});
+        say("$tcp_obj->{src_port} : $tcp_obj->{dest_port}");
+        $src_port  = $tcp_obj->{src_port};
+        $dest_port = $tcp_obj->{dest_port};
+    } else if ($ip_obj->{proto} ==IP_PROTO_UDP)
+    {
+        my $udp_obj = NetPacket::UDP->decode($ip_obj->{data});
+        say("$udp_obj->{dest_port} : $udp_obj->{src_port}");
+        $src_port  = $udp_obj->{src_port};
+        $dest_port = $udp_obj->{dest_port};
+    } else {
+        say("Error: unparsable packet");
+        return;
+    }
+
+    my $tupel_string = $ip_obj->{src_ip} . $src_port
+        . $ip_obj->{dest_ip} . $dest_port;
+
+    my $flow_id
+    if (defined( $flow_id = $tupel_to_id{$tupel_string})) {
+        # yas, we know that flow, return its id
+        return $flow_id;
+    } else {
+        # create a new entry, return newly assigned id
+        $max_flow_id++;
+        $tupel_to_id{$tupel_string} = $max_flow_id;
+        return $max_flow_id;
+    }
+}
+
 sub send_scheduler_afmt_fl
 {
-
+    # How to get flow IDs from kernel
+    if ( defined $flow_table{$flow_id}) {
+    }
 
 }
 sub tun_read {
