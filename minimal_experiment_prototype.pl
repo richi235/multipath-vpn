@@ -115,6 +115,7 @@ use POE;
 use POE
   qw(Wheel::SocketFactory XS::Loop::Poll);
 
+use Log::Fast;
 use IO::File;
 use IO::Interface::Simple;
 use IO::Socket;
@@ -167,6 +168,16 @@ my $config   = {};
 my $loglevel = 3;
 my $conf_file_name = "/etc/multivpn.cfg";
 
+# ## Log::Fast Loglevels ## One out of:
+# ERR
+# WARN
+# NOTICE
+# INFO
+# DEBUG
+my $loglevel_txrx = 'WARN';
+my $loglevel_algo = 'WARN';
+my $loglevel_connect = 'NOTICE';
+
 my $dccp_Texit  = 0;
 
 # (src_ip, src_port, dest_ip, dest_port) tupel is concatenated to a string (in exactly that order)
@@ -198,9 +209,29 @@ $SIG{INT} = sub { die "Caught a SIGINT Signal. Current Errno: $!" };
 sub parse_cli_args
 {
     GetOptions('loglevel|l=i' => \$loglevel,
-               'c|conf=s'     => \$conf_file_name );
+               'c|conf=s'     => \$conf_file_name,
+               'ltx=s'        => \$loglevel_txrx,
+               'lalgo=s'      => \$loglevel_algo,
+               'lcon=s'       => \$loglevel_connect);
 }
 
+my $TXRXLOG = Log::Fast->new({
+    level           => $loglevel_txrx,
+    type            => 'fh',
+    fh              => \*STDOUT,
+});
+
+my $ALGOLOG = Log::Fast->new({
+    level           => $loglevel_algo,
+    type            => 'fh',
+    fh              => \*STDOUT,
+});
+
+my $CONLOG = Log::Fast->new({
+    level           => $loglevel_algo,
+    type            => 'fh',
+    fh              => \*STDOUT,
+});
 
 # modifies the global variable $config (a dictionary)
 # highly impure
