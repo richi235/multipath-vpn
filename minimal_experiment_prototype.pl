@@ -122,6 +122,7 @@ use IO::Socket;
 use Term::ANSIColor;
 use Data::Dumper;
 use Getopt::Long;
+use Time::HiRes qw(time tv_interval);
 
 use NetPacket::TCP;
 use NetPacket::UDP;
@@ -176,7 +177,9 @@ my $max_flow_id = 0;
 
 # The AFMT flow table:
 # | Key     |  Value pair |
-# | flow_id | (last_subtunnel, timestamp) |
+# | flow_id | (last_subtun_id, timestamp) |
+
+# where last_subtun_id is the index in the @subtun_sessions and@subtun_sockets arrays
 
 # How to represent in perl?
 # naive approach:
@@ -358,11 +361,189 @@ sub get_flow_id
         return $max_flow_id;
     }
 }
+# takes:  1. ref to applicable subtunnels array , 2. size of the packet to send
+# returns: socket_id (int) of the chosen socket
+sub select_adaptively
+{
+    my @applicable_subtun_hashes = @{$_[0]};
+    my $packet_size = $_[1];
 
+    my $opti_sock_id;
+    my $min_weighted_fill = 1_000_000;
+
+    if ( 0 == @applicable_subtun_hashes ) {
+        say("Error: select_adaptively() called with empty subtun_hashes array");
+        exit(-1);
+    }
+
+    if ( 1 == @applicable_subtun_hashes) {
+        # if only one subtunnel is applicable (no overtaking/reordering produced)
+        # just return that
+        return $applicable_subtun_hashes[0]->{sock_id};
+    }
+
+    for my $subtun_hash (@applicable_subtun_hashes) {
+        my $weighted_fill =
+            # Wie kriege ich jetzt hier SRTT und sock fill?
+            #  - wäs wäre am performantesten?
+            #  - habs ja vorher schonmal abgefragt für flow-awareness
+            #  - evtl. mit reinwürgen in das @applicable_subtun_hashes array
+            #    - ja why not, immernoch billiger als syscall 2 mal machen
+            ( ($subtun_hash->{sock_fill} + $packet_size) /
+                  $subtun_hash->{send_rate})
+            * $subtun_hash->{srtt};
+        say($weighted_fill);
+        if ( $weighted_fill <= $min_weighted_fill) {
+            $min_weighted_fill = $weighted_fill;
+            $opti_sock_id = $subtun_hash->{sock_id};
+        }
+    }
+    return $opti_sock_id;
+}
+# TODOS:
+#   * subtun stats mit in ds array mit rein wursteln
+#     - hash struktur überlegen
+#       - was brauche ich?
+#         - SRTT
+#         - cwnd/send rate
+#         - sock_fill
+#         - packe_size
+#     - hash struktur dokumentieren
+#     - hash jedes mal bauen/initialisieren
+#     - hash reintun
+#     - evtl. dinge sinnvoll umbennenn
+#     - wegen packet size:
+#       - wie kriege ich die am besten?
+#       - ganzes paket mitgeben? oder besesr vorher messen und mit rein in den hash?
+#         - gute frage
+#           - so vom code style, deskriptiven stil wärs egientlich schöner vorher
+#           - okay also vorher
+#   * alles testen
+#   * nochmal verstehen was die stats alle machen/passen die
+#     - brauch ich die estimated oder die normale send rate? 
+#   * mtu problem fixen/besser verstehen
+#   * viel mehr logging überall einbauen
+#   * evtl. über modulweises logging nachdenken
 sub send_scheduler_afmt_fl
 {
+    my $flow_id = get_flow_id($_[0]);
+    my $subtun_count = @subtun_sockets;
+
     # How to get flow IDs from kernel
-    if ( defined $flow_table{$flow_id}) {
+    if ( defined (my $value_array = $flow_table{$flow_id})) {
+        my $last_sock_index = $value_array->[0] # the index to the global subtunnel and sock arrays
+
+        # the time stamp of when the last packet of this flow was send
+        my $last_send_time = $value_array->[1];
+
+        # How to calculate times?
+        # Is basic perl time precise enough? do i need a special high res module?
+        my $now = time();
+        my $delta = tv_interval($last_send_time, $now); # time difference between last send and now
+        my $ls_dccp_info_struct = getsockopt($subtun_sockets[$last_sock_index],
+                                            SOL_DCCP,
+                                            DCCP_SOCKOPT_CCID_TX_INFO
+                                        );
+        say($!) if (!defined($ls_dccp_info_struct));
+
+        my ($ls_send_rate, $ls_recv_rate, $ls_calc_rate, $ls_srtt, $ls_loss_event_rate,
+            $ls_rto, $ls_ipi)
+            = unpack('QQLLLLL', $ls_dccp_info_struct);
+
+        my $sock_send_fill = get_sock_sendbuffer_fill($subtun_sockets[$last_sock_index]);
+
+        my $last_sock_hash = {
+            sock_id     => $last_sock_index,
+            srtt        => $ls_srtt,
+            send_rate   => $ls_send_rate,
+            sock_fill   => $sock_send_fill
+        };
+
+        my @applicable_subtun_hashes;
+        push(@applicable_subtun_hashes, $last_sock_hash);
+
+
+        for (my $i = 0; $i <= $subtun_count; $i++) {
+            if ( $i == $last_sock_index ) {
+                next;
+            }
+
+            my $dccp_info_struct = getsockopt($subtun_sockets[$i],
+                SOL_DCCP,
+                DCCP_SOCKOPT_CCID_TX_INFO
+                );
+
+            say($!) if (!defined($dccp_info_struct));
+
+            my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate, $rto, $ipi)
+                = unpack('QQLLLLL', $dccp_info_struct);
+
+            if ( $srtt + ($delta * 1000_000) >= $ls_srtt ) {
+                my $sock_send_fill = get_sock_sendbuffer_fill($subtun_sockets[$i]);
+                my $sock_hash = {
+                            sock_id     => $i,
+                            srtt        => $srtt,
+                            send_rate   => $send_rate,
+                            sock_fill   => $sock_send_fill
+                };
+                push(@applicable_subtun_hashes, $sock_hash);
+            }
+        }
+
+        my $packet_size = bytes::length($_[0]);
+        my $opti_sock_id = select_adaptively(\@applicable_subtun_hashes, $packet_size);
+        # since $value_array is a ref to the array, the following
+        # also updates the real array in %flow_table
+        $value_array->[0] = $opti_sock_id;
+        $value_array->[1] = time();
+        # TODO: umstellen auf session ids statt socket
+        #   - übersetzungstabelle bauen?
+        #   - von anfang an session IDs nehmen?
+        #     - geht das? vergleichen könnte ich sie
+        #     - müsste die dann halt auch in flow_table mitführen
+        #     - hmm. aber ich brauch ja den socket für getsockopt()
+        #     - wobei ich hab ja schon eine tabelle die session ids zu sockets übersetzt
+        #     - jup übersetzen ist einfach
+        #       - aber was tue ich jetzt in die flow table rein?
+        #       - evtl. einafch nur den array index? why not
+        #       - irgendwann alles in ein array?
+        #       - wär theoretisch gut aber: performance und yolo, ist jetzt schon so und geht
+        $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0] );
+        return;
+    } else {
+        # prepare the array of available subtun hashes
+        # with the hashes containing all the stats necesarry for the algo to decide
+        my @applicable_subtun_hashes;
+        for (my $i = 0; $i <= $subtun_count; $i++) {
+            my $dccp_info_struct = getsockopt($subtun_sockets[$i],
+                                                SOL_DCCP,
+                                                DCCP_SOCKOPT_CCID_TX_INFO
+                                            );
+            say($!) if (!defined($dccp_info_struct));
+
+            my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate,
+                $rto, $ipi) = unpack('QQLLLLL', $dccp_info_struct);
+
+            my $sock_send_fill = get_sock_sendbuffer_fill($subtun_sockets[$i]);
+
+            my $sock_hash = {
+                sock_id     => $i,
+                srtt        => $srtt,
+                send_rate   => $send_rate,
+                sock_fill   => $sock_send_fill
+            };
+
+            push(@applicable_subtun_hashes, $sock_hash);
+        }
+        my $packet_size = bytes::length($_[0]);
+        my $opti_sock_id = select_adaptively(\@applicable_subtun_hashes, $packet_size);
+        # since $value_array is a ref to the array, the following
+        # also updates the real array in %flow_table
+        $value_array->[0] = $opti_sock_id;
+        $value_array->[1] = time();
+        $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0] );
+
+        return;
     }
 
 }
@@ -409,17 +590,7 @@ sub send_scheduler_rr
     }
 
     if ( $loglevel >= 4) {
-
-        # Get sock send buffer fill
-        my $ioctl_binary_return_buffer = "";
-        my $sock_sendbuffer_fill;
-	my $retval = ioctl($cur_subtun, SIOCOUTQ, $ioctl_binary_return_buffer); 
-        if (!defined($retval)) {
-	    say($!);
-	} else {
-	    # say(unpack("i", $ioctl_binary_return_buffer));
-            $sock_sendbuffer_fill = unpack("i", $ioctl_binary_return_buffer);
-	}
+        my $sock_sendbuffer_fill = get_sock_sendbuffer_fill($cur_subtun);
 
         # Get cwnd
         # Steps: 
