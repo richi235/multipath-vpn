@@ -374,6 +374,23 @@ sub tun_read {
     }
 }
 
+sub get_sock_sendbuffer_fill
+{
+    my $sock = shift;
+
+    # Get sock send buffer fill
+    my $ioctl_binary_return_buffer = "";
+    my $sock_sendbuffer_fill;
+    my $retval = ioctl($sock, SIOCOUTQ, $ioctl_binary_return_buffer); 
+    if (!defined($retval)) {
+        say($!);
+    } else {
+        # say(unpack("i", $ioctl_binary_return_buffer));
+        $sock_sendbuffer_fill = unpack("i", $ioctl_binary_return_buffer);
+    }
+    return $sock_sendbuffer_fill;
+}
+
 sub send_scheduler_rr
 {
     # we only get 1 parameter: a network packet ~1500 bytes
