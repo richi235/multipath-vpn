@@ -165,7 +165,6 @@ my @subtun_sockets  = ();
 
 $| = 1;                    # disable terminal output buffering
 my $config   = {};
-my $loglevel = 3;
 my $conf_file_name = "/etc/multivpn.cfg";
 
 # ## Log::Fast Loglevels ## One out of:
@@ -177,6 +176,11 @@ my $conf_file_name = "/etc/multivpn.cfg";
 my $loglevel_txrx = 'WARN';
 my $loglevel_algo = 'WARN';
 my $loglevel_connect = 'NOTICE';
+
+# The Log::Fast (component wise) loggers
+my $TXRXLOG
+my $ALGOLOG
+my $CONLOG
 
 my $dccp_Texit  = 0;
 
@@ -208,30 +212,32 @@ $SIG{INT} = sub { die "Caught a SIGINT Signal. Current Errno: $!" };
 ####### Section 1 START: Function Definitions #############
 sub parse_cli_args
 {
-    GetOptions('loglevel|l=i' => \$loglevel,
-               'c|conf=s'     => \$conf_file_name,
+    GetOptions('c|conf=s'     => \$conf_file_name,
                'ltx=s'        => \$loglevel_txrx,
                'lalgo=s'      => \$loglevel_algo,
                'lcon=s'       => \$loglevel_connect);
 }
 
-my $TXRXLOG = Log::Fast->new({
-    level           => $loglevel_txrx,
-    type            => 'fh',
-    fh              => \*STDOUT,
-});
+sub init_loggers
+{
+    $TXRXLOG = Log::Fast->new({
+        level           => $loglevel_txrx,
+        type            => 'fh',
+        fh              => \*STDOUT,
+    });
 
-my $ALGOLOG = Log::Fast->new({
-    level           => $loglevel_algo,
-    type            => 'fh',
-    fh              => \*STDOUT,
-});
+    $ALGOLOG = Log::Fast->new({
+        level           => $loglevel_algo,
+        type            => 'fh',
+        fh              => \*STDOUT,
+    });
 
-my $CONLOG = Log::Fast->new({
-    level           => $loglevel_algo,
-    type            => 'fh',
-    fh              => \*STDOUT,
-});
+    $CONLOG = Log::Fast->new({
+        level           => $loglevel_algo,
+        type            => 'fh',
+        fh              => \*STDOUT,
+    });
+}
 
 # modifies the global variable $config (a dictionary)
 # highly impure
@@ -620,7 +626,8 @@ sub send_scheduler_rr
         return;
     }
 
-    if ( $loglevel >= 4) {
+    if ( $loglevel_algo eq 'INFO'
+         || $loglevel_algo eq 'DEBUG') {
         my $sock_sendbuffer_fill = get_sock_sendbuffer_fill($cur_subtun);
 
         # Get cwnd
@@ -637,7 +644,7 @@ sub send_scheduler_rr
         my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate, $rto, $ipi)
             = unpack('QQLLLLL', $dccp_info_struct);
 
-        say("Just scheduled 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels\n" .
+        $ALGOLOG->INFO("Just scheduled 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels\n" .
             "Packet size:          " . bytes::length($_[0]) . "\n" .
             "Send rate:            " . $send_rate . "\n" .
             "Sock sendbuffer fill: " . $sock_sendbuffer_fill . "\n" .
@@ -767,11 +774,9 @@ sub setup_dccp_client
             push(@subtun_sessions, $_[SESSION]->ID());
             push(@subtun_sockets, $_[ARG0]);
             $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_input");
-            if ( $loglevel >=3 ) {
-                say(colored("DCCP Client: ", 'bold green')
-                    . "Succesfully connected one subtunnel");
-                say(Dumper($_[HEAP]{subtun_sock}));
-            }
+            $CONLOG->NOTICE(colored("DCCP Client: ", 'bold green')
+                . "Succesfully connected one subtunnel");
+            # say(Dumper($_[HEAP]{subtun_sock}));
         },
         on_input        => \&dccp_subtun_minimal_recv,
         on_data_to_send => \&dccp_subtun_minimal_send,
@@ -792,15 +797,14 @@ sub dccp_subtun_minimal_recv
     my $curinput = undef;
     $_[HEAP]{subtun_sock}->sysread($curinput, 1600);
     $_[KERNEL]->call($tuntap_session => "put_into_tun_device", $curinput);
+    TXRXLOG->INFO("Recieved one tun packet");
 }
 
 sub dccp_subtun_minimal_send
 {
     my $payload = $_[ARG0];
     $_[HEAP]->{subtun_sock}->syswrite($payload);
-    if ( $loglevel >= 4 ) {
-        say("Sending payload through subtunnel \n");
-    }
+    TXRXLOG->INFO("Sending payload through subtunnel");
 }
 
 sub dccp_server_new_client {
@@ -818,10 +822,8 @@ sub dccp_server_new_client {
                 say(colored("DCCP Server: ", 'bold green')
                        . "Succesfully accepted one subtunnel");
                 $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_data_received");
-                if ( $loglevel >=3 ) {
-                    say("Server side: New Connection Socket: \n"
-                            . Dumper($_[HEAP]{subtun_sock}));
-                }
+                $CONLOG->NOTICE("Server side: New Connection Socket: \n"
+                        . Dumper($_[HEAP]{subtun_sock}));
             },
             on_data_received => \&dccp_subtun_minimal_recv,
             on_data_to_send => \&dccp_subtun_minimal_send,
@@ -833,6 +835,7 @@ sub dccp_server_new_client {
 
 parse_cli_args();
 parse_conf_file();
+init_loggers();
 
 # DCCP listen socket session
 if ( $dccp_Texit) {
