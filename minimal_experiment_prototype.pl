@@ -364,23 +364,23 @@ sub get_flow_id
 {
     # parse the packet
     my $ip_obj = NetPacket::IP->decode(($_[1]));
-    say("$ip_obj->{src_ip} : $ip_obj->{dest_ip} : $ip_obj->{proto}" );
+    $ALGOLOG->INFO("get_flow_id(): IP Parsing succesfull: $ip_obj->{src_ip} : $ip_obj->{dest_ip} : $ip_obj->{proto}" );
 
     my ($src_port, $dest_port);
 
     if ( $ip_obj->{proto} ==IP_PROTO_TCP ) {
         my $tcp_obj = NetPacket::TCP->decode($ip_obj->{data});
-        say("$tcp_obj->{src_port} : $tcp_obj->{dest_port}");
+        $ALGOLOG->INFO("$tcp_obj->{src_port} : $tcp_obj->{dest_port}");
         $src_port  = $tcp_obj->{src_port};
         $dest_port = $tcp_obj->{dest_port};
     } else if ($ip_obj->{proto} ==IP_PROTO_UDP)
     {
         my $udp_obj = NetPacket::UDP->decode($ip_obj->{data});
-        say("$udp_obj->{dest_port} : $udp_obj->{src_port}");
+        $ALGOLOG->INFO("$udp_obj->{dest_port} : $udp_obj->{src_port}");
         $src_port  = $udp_obj->{src_port};
         $dest_port = $udp_obj->{dest_port};
     } else {
-        say("Error: unparsable packet");
+        $ALGOLOG->ERR("Error: unparsable packet");
         return;
     }
 
@@ -390,11 +390,13 @@ sub get_flow_id
     my $flow_id
     if (defined( $flow_id = $tupel_to_id{$tupel_string})) {
         # yas, we know that flow, return its id
+        $ALGOLOG->INFO("Found Flow id: $flow_id for $tupel_string");
         return $flow_id;
     } else {
         # create a new entry, return newly assigned id
         $max_flow_id++;
         $tupel_to_id{$tupel_string} = $max_flow_id;
+        $ALGOLOG->INFO("Created new Flow id: $max_flow_id for $tupel_string");
         return $max_flow_id;
     }
 }
@@ -409,13 +411,14 @@ sub select_adaptively
     my $min_weighted_fill = 1_000_000;
 
     if ( 0 == @applicable_subtun_hashes ) {
-        say("Error: select_adaptively() called with empty subtun_hashes array");
+        $ALGOLOG->ERR("Error: select_adaptively() called with empty subtun_hashes array");
         exit(-1);
     }
 
     if ( 1 == @applicable_subtun_hashes) {
         # if only one subtunnel is applicable (no overtaking/reordering produced)
         # just return that
+        $ALGOLOG->NOTICE("select_adaptively(): called with only 1 arg");
         return $applicable_subtun_hashes[0]->{sock_id};
     }
 
@@ -429,12 +432,18 @@ sub select_adaptively
             ( ($subtun_hash->{sock_fill} + $packet_size) /
                   $subtun_hash->{send_rate})
             * $subtun_hash->{srtt};
-        say($weighted_fill);
+        $ALGOLOG->INFO("select_adaptively(): sock_id: $subtun_hash->{sock_id}"
+                           . "srtt: $subtun_hash->{srtt}"
+                           . "send_rate: $subtun_hash->{send_rate}"
+                           . "sock_fill: $subtun_hash->{sock_send_fill}"
+                           . "resulting weighted_fill: $weighted_fill");
+
         if ( $weighted_fill <= $min_weighted_fill) {
             $min_weighted_fill = $weighted_fill;
             $opti_sock_id = $subtun_hash->{sock_id};
         }
     }
+    $ALGOLOG->INFO("selected sock: $opti_sock_id, with weighted_fill: $min_weighted_fill");
     return $opti_sock_id;
 }
 # TODOS:
@@ -466,6 +475,8 @@ sub send_scheduler_afmt_fl
     my $flow_id = get_flow_id($_[0]);
     my $subtun_count = @subtun_sockets;
 
+    $ALGOLOG->DEBUG("send_scheduler_afmt_fl() called with $subtun_count sockets, succesfully got flow id: $flow_id");
+
     # How to get flow IDs from kernel
     if ( defined (my $value_array = $flow_table{$flow_id})) {
         my $last_sock_index = $value_array->[0] # the index to the global subtunnel and sock arrays
@@ -481,7 +492,7 @@ sub send_scheduler_afmt_fl
                                             SOL_DCCP,
                                             DCCP_SOCKOPT_CCID_TX_INFO
                                         );
-        say($!) if (!defined($ls_dccp_info_struct));
+        ALGOLOG->ERR($!) if (!defined($ls_dccp_info_struct));
 
         my ($ls_send_rate, $ls_recv_rate, $ls_calc_rate, $ls_srtt, $ls_loss_event_rate,
             $ls_rto, $ls_ipi)
@@ -499,7 +510,6 @@ sub send_scheduler_afmt_fl
         my @applicable_subtun_hashes;
         push(@applicable_subtun_hashes, $last_sock_hash);
 
-
         for (my $i = 0; $i <= $subtun_count; $i++) {
             if ( $i == $last_sock_index ) {
                 next;
@@ -510,7 +520,7 @@ sub send_scheduler_afmt_fl
                 DCCP_SOCKOPT_CCID_TX_INFO
                 );
 
-            say($!) if (!defined($dccp_info_struct));
+            ALGOLOG->ERR($!) if (!defined($dccp_info_struct));
 
             my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate, $rto, $ipi)
                 = unpack('QQLLLLL', $dccp_info_struct);
@@ -533,6 +543,7 @@ sub send_scheduler_afmt_fl
         # also updates the real array in %flow_table
         $value_array->[0] = $opti_sock_id;
         $value_array->[1] = time();
+        $ALGOLOG->NOTICE("send_scheduler_afmt_fl(): continuing existing flow, using sock id: $opti_sock_id");
         # TODO: umstellen auf session ids statt socket
         #   - übersetzungstabelle bauen?
         #   - von anfang an session IDs nehmen?
@@ -556,7 +567,7 @@ sub send_scheduler_afmt_fl
                                                 SOL_DCCP,
                                                 DCCP_SOCKOPT_CCID_TX_INFO
                                             );
-            say($!) if (!defined($dccp_info_struct));
+            ALGOLOG->ERR($!) if (!defined($dccp_info_struct));
 
             my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate,
                 $rto, $ipi) = unpack('QQLLLLL', $dccp_info_struct);
@@ -572,17 +583,19 @@ sub send_scheduler_afmt_fl
 
             push(@applicable_subtun_hashes, $sock_hash);
         }
+
         my $packet_size = bytes::length($_[0]);
         my $opti_sock_id = select_adaptively(\@applicable_subtun_hashes, $packet_size);
+
         # since $value_array is a ref to the array, the following
         # also updates the real array in %flow_table
         $value_array->[0] = $opti_sock_id;
         $value_array->[1] = time();
+        $ALGOLOG->NOTICE("send_sched_afmt(): Started new flow send through sock id: $opti_sock_id");
         $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0] );
 
         return;
     }
-
 }
 sub tun_read {
     my $buf;
