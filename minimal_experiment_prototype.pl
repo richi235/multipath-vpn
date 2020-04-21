@@ -125,9 +125,9 @@ use Data::Dumper;
 use Getopt::Long;
 use Time::HiRes qw(time tv_interval);
 
+use NetPacket::IP qw(IP_PROTO_TCP IP_PROTO_UDP);
 use NetPacket::TCP;
 use NetPacket::UDP;
-use NetPacket::IP;
 
 # Constants
 use constant TUN_MAX_FRAME => 4096;
