@@ -447,7 +447,7 @@ sub select_adaptively
     return $opti_sock_id;
 }
 # TODOS:
-#   * subtun stats mit in ds array mit rein wursteln
+#  [x]subtun stats mit in ds array mit rein wursteln
 #     - hash struktur überlegen
 #       - was brauche ich?
 #         - SRTT
@@ -465,11 +465,11 @@ sub select_adaptively
 #           - so vom code style, deskriptiven stil wärs egientlich schöner vorher
 #           - okay also vorher
 #   * alles testen
-#   * nochmal verstehen was die stats alle machen/passen die
+#   * STARTED nochmal verstehen was die stats alle machen/passen die
 #     - brauch ich die estimated oder die normale send rate? 
 #   * mtu problem fixen/besser verstehen
-#   * viel mehr logging überall einbauen
-#   * evtl. über modulweises logging nachdenken
+#  [x]viel mehr logging überall einbauen
+#  [x]evtl. über modulweises logging nachdenken
 sub send_scheduler_afmt_fl
 {
     my $flow_id = get_flow_id($_[0]);
