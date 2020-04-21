@@ -178,16 +178,16 @@ my $loglevel_algo = 'WARN';
 my $loglevel_connect = 'NOTICE';
 
 # The Log::Fast (component wise) loggers
-my $TXRXLOG
-my $ALGOLOG
-my $CONLOG
+my $TXRXLOG;
+my $ALGOLOG;
+my $CONLOG;
 
 my $dccp_Texit  = 0;
 
 # (src_ip, src_port, dest_ip, dest_port) tupel is concatenated to a string (in exactly that order)
 # and serves as key.
 # An simple incrementally chosen int serves as value and flow id.
-my %tupel_to_id
+my %tupel_to_id;
 my $max_flow_id = 0;
 
 # The AFMT flow table:
@@ -368,12 +368,12 @@ sub get_flow_id
 
     my ($src_port, $dest_port);
 
-    if ( $ip_obj->{proto} ==IP_PROTO_TCP ) {
+    if ( $ip_obj->{proto} == IP_PROTO_TCP ) {
         my $tcp_obj = NetPacket::TCP->decode($ip_obj->{data});
         $ALGOLOG->INFO("$tcp_obj->{src_port} : $tcp_obj->{dest_port}");
         $src_port  = $tcp_obj->{src_port};
         $dest_port = $tcp_obj->{dest_port};
-    } else if ($ip_obj->{proto} ==IP_PROTO_UDP)
+    } elsif ($ip_obj->{proto} == IP_PROTO_UDP)
     {
         my $udp_obj = NetPacket::UDP->decode($ip_obj->{data});
         $ALGOLOG->INFO("$udp_obj->{dest_port} : $udp_obj->{src_port}");
@@ -387,7 +387,7 @@ sub get_flow_id
     my $tupel_string = $ip_obj->{src_ip} . $src_port
         . $ip_obj->{dest_ip} . $dest_port;
 
-    my $flow_id
+    my $flow_id;
     if (defined( $flow_id = $tupel_to_id{$tupel_string})) {
         # yas, we know that flow, return its id
         $ALGOLOG->INFO("Found Flow id: $flow_id for $tupel_string");
@@ -479,7 +479,7 @@ sub send_scheduler_afmt_fl
 
     # How to get flow IDs from kernel
     if ( defined (my $value_array = $flow_table{$flow_id})) {
-        my $last_sock_index = $value_array->[0] # the index to the global subtunnel and sock arrays
+        my $last_sock_index = $value_array->[0]; # the index to the global subtunnel and sock arrays
 
         # the time stamp of when the last packet of this flow was send
         my $last_send_time = $value_array->[1];
