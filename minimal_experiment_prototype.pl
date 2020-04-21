@@ -472,6 +472,12 @@ sub select_adaptively
 #  [x]evtl. über modulweises logging nachdenken
 sub send_scheduler_afmt_fl
 {
+
+    if ( $subtun_count == 0) {
+        say("send_scheduler_afmt_fl called with no subtunnels??? not sending, returning");
+        return;
+    }
+
     my $flow_id = get_flow_id($_[0]);
     my $subtun_count = @subtun_sockets;
 
