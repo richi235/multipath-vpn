@@ -125,7 +125,7 @@ use Data::Dumper;
 use Getopt::Long;
 use Time::HiRes qw(time tv_interval);
 
-use NetPacket::IP qw(IP_PROTO_TCP IP_PROTO_UDP);
+use NetPacket::IP qw(:protos :versions);
 use NetPacket::TCP;
 use NetPacket::UDP;
 
@@ -365,6 +365,13 @@ sub get_flow_id
     # parse the packet
     # using $_[0] because with shift we would copy the whole packet, and that would be bad for performance
     my $ip_obj = NetPacket::IP->decode(($_[0]));
+
+    # Check if this is an IPv4 packet at all
+    # if not return an error, we can not work with this here
+    if ( $ip_obj->{ver} != IP_VERSION_IPv4 ) {
+        $ALGOLOG->INFO("INFO: get_flow_id(): No IPv4 packet");
+        return -2;
+    }
     $ALGOLOG->INFO("get_flow_id(): IP Parsing succesfull: $ip_obj->{src_ip} : $ip_obj->{dest_ip} : $ip_obj->{proto}" );
 
     my ($src_port, $dest_port);
@@ -476,11 +483,16 @@ sub send_scheduler_afmt_fl
     my $subtun_count = @subtun_sockets;
 
     if ( $subtun_count == 0) {
-        say("send_scheduler_afmt_fl called with no subtunnels??? not sending, returning");
+        $ALGOLOG->WARN("send_scheduler_afmt_fl called with no subtunnels??? not sending, returning");
         return;
     }
 
     my $flow_id = get_flow_id($_[0]);
+    if ( $flow_id == -2) {
+        $ALGOLOG->WARN("WARNING: send_scheduler_afmt_fl(): payload ist no IPv4 packet, dropping it");
+        return;
+        # just returning without sending the packet is equivalent to droppning it
+    }
 
     $ALGOLOG->DEBUG("send_scheduler_afmt_fl() called with $subtun_count sockets, succesfully got flow id: $flow_id");
 
