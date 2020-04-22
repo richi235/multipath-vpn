@@ -362,9 +362,13 @@ sub set_via_tunnel_routes
 # param1: ref to packet byte string
 sub get_flow_id
 {
-    # parse the packet
+
     # using $_[0] because with shift we would copy the whole packet, and that would be bad for performance
-    my $ip_obj = NetPacket::IP->decode(($_[0]));
+    # This removes the 4 byte TunTap header
+    my $raw_ip_packet = bytes::substr($_[0], 4);
+
+    # parse the packet
+    my $ip_obj = NetPacket::IP->decode($raw_ip_packet);
 
     # Check if this is an IPv4 packet at all
     # if not return an error, we can not work with this here
