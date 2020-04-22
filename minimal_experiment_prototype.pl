@@ -550,18 +550,6 @@ sub send_scheduler_afmt_fl
         $value_array->[0] = $opti_sock_id;
         $value_array->[1] = time();
         $ALGOLOG->NOTICE("send_scheduler_afmt_fl(): continuing existing flow, using sock id: $opti_sock_id");
-        # TODO: umstellen auf session ids statt socket
-        #   - übersetzungstabelle bauen?
-        #   - von anfang an session IDs nehmen?
-        #     - geht das? vergleichen könnte ich sie
-        #     - müsste die dann halt auch in flow_table mitführen
-        #     - hmm. aber ich brauch ja den socket für getsockopt()
-        #     - wobei ich hab ja schon eine tabelle die session ids zu sockets übersetzt
-        #     - jup übersetzen ist einfach
-        #       - aber was tue ich jetzt in die flow table rein?
-        #       - evtl. einafch nur den array index? why not
-        #       - irgendwann alles in ein array?
-        #       - wär theoretisch gut aber: performance und yolo, ist jetzt schon so und geht
         $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0] );
         return;
     } else {
