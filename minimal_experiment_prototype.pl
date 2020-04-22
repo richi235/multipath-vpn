@@ -817,14 +817,14 @@ sub dccp_subtun_minimal_recv
     my $curinput = undef;
     $_[HEAP]{subtun_sock}->sysread($curinput, 1600);
     $_[KERNEL]->call($tuntap_session => "put_into_tun_device", $curinput);
-    $TXRXLOG->INFO("Recieved one tun packet");
+    $TXRXLOG->INFO("Recieved one DCCP packet");
 }
 
 sub dccp_subtun_minimal_send
 {
     my $payload = $_[ARG0];
     $_[HEAP]->{subtun_sock}->syswrite($payload);
-    $TXRXLOG->INFO("Sending payload through subtunnel");
+    $TXRXLOG->INFO("Sending payload through DCCP subtunnel");
 }
 
 sub dccp_server_new_client {
