@@ -483,13 +483,13 @@ sub send_scheduler_afmt_fl
     my $subtun_count = @subtun_sockets;
 
     if ( $subtun_count == 0) {
-        $ALGOLOG->WARN("send_scheduler_afmt_fl called with no subtunnels??? not sending, returning");
+        $ALGOLOG->WARN("send_scheduler_afmt_fl called with no subtunnels??? not sending, dropping");
         return;
     }
 
     my $flow_id = get_flow_id($_[0]);
     if ( $flow_id == -2) {
-        $ALGOLOG->WARN("WARNING: send_scheduler_afmt_fl(): payload ist no IPv4 packet, dropping it");
+        $ALGOLOG->WARN("WARNING: send_scheduler_afmt_fl(): payload ist no IPv4 packet, dropping it\n");
         return;
         # just returning without sending the packet is equivalent to droppning it
     }
