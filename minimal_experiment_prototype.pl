@@ -573,7 +573,7 @@ sub send_scheduler_afmt_fl
         # prepare the array of available subtun hashes
         # with the hashes containing all the stats necesarry for the algo to decide
         my @applicable_subtun_hashes;
-        for (my $i = 0; $i <= $subtun_count; $i++) {
+        for (my $i = 0; $i < $subtun_count; $i++) {
             my $dccp_info_struct = getsockopt($subtun_sockets[$i],
                                                 SOL_DCCP,
                                                 DCCP_SOCKOPT_CCID_TX_INFO
