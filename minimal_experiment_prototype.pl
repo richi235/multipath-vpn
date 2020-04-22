@@ -363,7 +363,8 @@ sub set_via_tunnel_routes
 sub get_flow_id
 {
     # parse the packet
-    my $ip_obj = NetPacket::IP->decode(($_[1]));
+    # using $_[0] because with shift we would copy the whole packet, and that would be bad for performance
+    my $ip_obj = NetPacket::IP->decode(($_[0]));
     $ALGOLOG->INFO("get_flow_id(): IP Parsing succesfull: $ip_obj->{src_ip} : $ip_obj->{dest_ip} : $ip_obj->{proto}" );
 
     my ($src_port, $dest_port);
