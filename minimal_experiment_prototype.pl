@@ -679,7 +679,7 @@ sub send_scheduler_rr
 }
 
 # Receives from a subtunnel and puts into tun/tap device
-sub tuntap_take
+sub tun_write
 {
     my ( $heap, $buf ) = @_[ HEAP, ARG0 ];
 
@@ -906,7 +906,7 @@ POE::Session->create(
     inline_states => {
         _start => \&start_tun_session,
         got_packet_from_tun_device => \&tun_read,
-        put_into_tun_device => \&tuntap_take,
+        put_into_tun_device => \&tun_write,
     }
 );
 
