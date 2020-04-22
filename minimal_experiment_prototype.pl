@@ -606,7 +606,7 @@ sub send_scheduler_afmt_fl
 }
 sub tun_read {
     my $buf;
-    while(sysread($_[HEAP]->{tun_device}, $buf , $config->{local}->{mtu} ))
+    while(sysread($_[HEAP]->{tun_device}, $buf , TUN_MAX_FRAME ))
     {
         send_scheduler_rr($buf);
     }
