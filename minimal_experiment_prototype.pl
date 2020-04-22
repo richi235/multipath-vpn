@@ -561,7 +561,7 @@ sub send_scheduler_afmt_fl
                                                 SOL_DCCP,
                                                 DCCP_SOCKOPT_CCID_TX_INFO
                                             );
-            ALGOLOG->ERR($!) if (!defined($dccp_info_struct));
+            $ALGOLOG->ERR($!) if (!defined($dccp_info_struct));
 
             my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate,
                 $rto, $ipi) = unpack('QQLLLLL', $dccp_info_struct);
