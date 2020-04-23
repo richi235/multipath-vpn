@@ -363,12 +363,17 @@ sub set_via_tunnel_routes
 sub get_flow_id
 {
 
+    my $packet_size = bytes::length($_[0]);
+    $ALGOLOG->INFO("get_flow_id(): Packet size: $packet_size");
     # using $_[0] because with shift we would copy the whole packet, and that would be bad for performance
     # This removes the 4 byte TunTap header
     my $raw_ip_packet = bytes::substr($_[0], 4);
 
     # parse the packet
     my $ip_obj = NetPacket::IP->decode($raw_ip_packet);
+
+    $ALGOLOG->DEBUG(Dumper($ip_obj));
+    $ALGOLOG->DEBUG(IP_VERSION_IPv4); #dump the constant
 
     # Check if this is an IPv4 packet at all
     # if not return an error, we can not work with this here
