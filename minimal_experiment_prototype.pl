@@ -637,11 +637,12 @@ sub get_sock_sendbuffer_fill
     my $sock_sendbuffer_fill;
     my $retval = ioctl($sock, SIOCOUTQ, $ioctl_binary_return_buffer); 
     if (!defined($retval)) {
-        say($!);
+        $ALGOLOG->ERR($!);
     } else {
         # say(unpack("i", $ioctl_binary_return_buffer));
         $sock_sendbuffer_fill = unpack("i", $ioctl_binary_return_buffer);
     }
+    $ALGOLOG->INFO("get sendbuffer fill(): buffer fill: $sock_sendbuffer_fill");
     return $sock_sendbuffer_fill;
 }
 
