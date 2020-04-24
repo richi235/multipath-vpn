@@ -452,7 +452,7 @@ sub select_adaptively
         $ALGOLOG->INFO("select_adaptively(): sock_id: $subtun_hash->{sock_id}"
                            . " | srtt: $subtun_hash->{srtt}"
                            . " | send_rate: $subtun_hash->{send_rate}"
-                           . " | sock_fill: $subtun_hash->{sock_send_fill}"
+                           . " | sock_fill: $subtun_hash->{sock_fill}"
                            . " | resulting weighted_fill: $weighted_fill");
 
         if ( $weighted_fill <= $min_weighted_fill) {
