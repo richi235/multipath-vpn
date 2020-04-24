@@ -162,6 +162,7 @@ my $sessions   = {};
 my $tuntap_session = undef;
 my @subtun_sessions = ();
 my @subtun_sockets  = ();
+my $packet_scheduler;
 
 $| = 1;                    # disable terminal output buffering
 my $config   = {};
@@ -176,6 +177,7 @@ my $conf_file_name = "/etc/multivpn.cfg";
 my $loglevel_txrx = 'WARN';
 my $loglevel_algo = 'WARN';
 my $loglevel_connect = 'NOTICE';
+my $sched_algo = "afmt_fl";
 
 # The Log::Fast (component wise) loggers
 my $TXRXLOG;
@@ -215,6 +217,7 @@ sub parse_cli_args
     GetOptions('c|conf=s'     => \$conf_file_name,
                'ltx=s'        => \$loglevel_txrx,
                'lalgo=s'      => \$loglevel_algo,
+               'sched=s'      => \$sched_algo,
                'lcon=s'       => \$loglevel_connect);
 }
 
@@ -624,7 +627,9 @@ sub tun_read {
     my $buf;
     while(sysread($_[HEAP]->{tun_device}, $buf , TUN_MAX_FRAME ))
     {
-        send_scheduler_afmt_fl($buf);
+        # $packet_scheduler is a reference to a function
+        # & dereferences it for calling see man perlref for details, same as with @$ for array references
+        &$packet_scheduler($buf);
     }
 }
 
@@ -873,6 +878,12 @@ sub dccp_server_new_client {
 parse_cli_args();
 parse_conf_file();
 init_loggers();
+
+if ( $sched_algo eq 'afmt_fl') {
+    $packet_scheduler = \&send_scheduler_afmt_fl;
+} elsif ( $sched_algo eq 'rr') {
+    $packet_scheduler = \&send_scheduler_rr;
+}
 
 # DCCP listen socket session
 if ( $dccp_Texit) {
