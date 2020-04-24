@@ -491,12 +491,18 @@ sub send_scheduler_afmt_fl
 {
     my $subtun_count = @subtun_sockets;
 
+    # When no subtunnels available, don't work and returning
+    # Maybe we are still in warmup phase
     if ( $subtun_count == 0) {
         $ALGOLOG->WARN("send_scheduler_afmt_fl called with no subtunnels??? not sending, dropping");
         return;
     }
 
+    # uses our own flow tracking system
     my $flow_id = get_flow_id($_[0]);
+
+    # flow id -2 means it was no proper IPv4 packet, print error message and return
+    # We don't forward non-ipv4 traffic currently
     if ( $flow_id == -2) {
         $ALGOLOG->WARN("WARNING: send_scheduler_afmt_fl(): payload ist no IPv4 packet, dropping it\n");
         return;
@@ -505,7 +511,8 @@ sub send_scheduler_afmt_fl
 
     $ALGOLOG->DEBUG("send_scheduler_afmt_fl() called with $subtun_count sockets, succesfully got flow id: $flow_id");
 
-    if ( defined (my $value_array = $flow_table{$flow_id})) {
+    # If packet is part of a known flow:
+    if ( defined (my $value_array = $flow_table{$flow_id})) { 
         my $last_sock_index = $value_array->[0]; # the index to the global subtunnel and sock arrays
 
         # the time stamp of when the last packet of this flow was send
@@ -566,6 +573,7 @@ sub send_scheduler_afmt_fl
 
         my $packet_size = bytes::length($_[0]);
         my $opti_sock_id = select_adaptively(\@applicable_subtun_hashes, $packet_size);
+
         # since $value_array is a ref to the array, the following
         # also updates the real array in %flow_table
         $value_array->[0] = $opti_sock_id;
@@ -573,7 +581,7 @@ sub send_scheduler_afmt_fl
         $ALGOLOG->NOTICE("send_scheduler_afmt_fl(): continuing existing flow, using sock id: $opti_sock_id");
         $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0] );
         return;
-    } else {
+    } else { # packet starts a new flow
         # prepare the array of available subtun hashes
         # with the hashes containing all the stats necesarry for the algo to decide
         my @applicable_subtun_hashes;
