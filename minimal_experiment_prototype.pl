@@ -453,9 +453,9 @@ sub select_adaptively
                   ($subtun_hash->{send_rate} || 1) )
             * $subtun_hash->{srtt};
         $ALGOLOG->INFO("select_adaptively(): sock_id: $subtun_hash->{sock_id}"
-                           . " | srtt: $subtun_hash->{srtt}"
-                           . " | send_rate: $subtun_hash->{send_rate}"
-                           . " | sock_fill: $subtun_hash->{sock_fill}"
+                           . " | srtt:" . $subtun_hash->{srtt}/1000 . "ms"
+                           . " | send_rate:" . ($subtun_hash->{send_rate}*64)/1000 . "kB/s"
+                           . " | sock_fill: $subtun_hash->{sock_fill} Byte"
                            . " | resulting weighted_fill: $weighted_fill");
 
         if ( $weighted_fill <= $min_weighted_fill) {
