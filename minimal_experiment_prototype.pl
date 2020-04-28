@@ -381,7 +381,7 @@ sub get_flow_id
     # Check if this is an IPv4 packet at all
     # if not return an error, we can not work with this here
     if ( $ip_obj->{ver} != IP_VERSION_IPv4 ) {
-        $ALGOLOG->INFO("INFO: get_flow_id(): No IPv4 packet");
+        $ALGOLOG->DEBUG("INFO: get_flow_id(): No IPv4 packet");
         return -2;
     }
     $ALGOLOG->INFO("get_flow_id(): IP Parsing succesfull: $ip_obj->{src_ip} : $ip_obj->{dest_ip} : $ip_obj->{proto}" );
@@ -452,7 +452,7 @@ sub select_adaptively
             ( ($subtun_hash->{sock_fill} + $packet_size) /
                   ($subtun_hash->{send_rate} || 1) )
             * $subtun_hash->{srtt};
-        $ALGOLOG->INFO("select_adaptively(): sock_id: $subtun_hash->{sock_id}"
+        $ALGOLOG->NOTICE("select_adaptively(): sock_id: $subtun_hash->{sock_id}"
                            . " | srtt:" . $subtun_hash->{srtt}/1000 . "ms"
                            . " | send_rate:" . ($subtun_hash->{send_rate}*64)/1000 . "kB/s"
                            . " | sock_fill: $subtun_hash->{sock_fill} Byte"
@@ -463,7 +463,7 @@ sub select_adaptively
             $opti_sock_id = $subtun_hash->{sock_id};
         }
     }
-    $ALGOLOG->INFO("selected sock: $opti_sock_id, with weighted_fill: $min_weighted_fill");
+    $ALGOLOG->NOTICE("selected sock: $opti_sock_id, with weighted_fill: $min_weighted_fill");
     return $opti_sock_id;
 }
 # TODOS:
