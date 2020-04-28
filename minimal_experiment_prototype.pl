@@ -647,7 +647,7 @@ sub get_sock_sendbuffer_fill
         # say(unpack("i", $ioctl_binary_return_buffer));
         $sock_sendbuffer_fill = unpack("i", $ioctl_binary_return_buffer);
     }
-    $ALGOLOG->INFO("get sendbuffer fill(): buffer fill: $sock_sendbuffer_fill");
+    $ALGOLOG->DEBUG("get sendbuffer fill(): buffer fill: $sock_sendbuffer_fill");
     return $sock_sendbuffer_fill;
 }
 
@@ -839,14 +839,14 @@ sub dccp_subtun_minimal_recv
     my $curinput = undef;
     $_[HEAP]{subtun_sock}->sysread($curinput, 1600);
     $_[KERNEL]->call($tuntap_session => "put_into_tun_device", $curinput);
-    $TXRXLOG->INFO("Recieved one DCCP packet");
+    $TXRXLOG->DEBUG("Recieved one DCCP packet");
 }
 
 sub dccp_subtun_minimal_send
 {
     my $payload = $_[ARG0];
     $_[HEAP]->{subtun_sock}->syswrite($payload);
-    $TXRXLOG->INFO("Sending payload through DCCP subtunnel");
+    $TXRXLOG->DEBUG("Sending payload through DCCP subtunnel");
 }
 
 sub dccp_server_new_client {
