@@ -548,7 +548,7 @@ sub send_scheduler_afmt_fl
         my @applicable_subtun_hashes;
         push(@applicable_subtun_hashes, $last_sock_hash);
 
-        for (my $i = 0; $i <= $subtun_count; $i++) {
+        for (my $i = 0; $i < $subtun_count; $i++) {
             if ( $i == $last_sock_index ) {
                 next;
             }
