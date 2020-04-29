@@ -514,6 +514,7 @@ sub send_scheduler_afmt_fl
 
     $ALGOLOG->DEBUG("send_scheduler_afmt_fl() called with $subtun_count sockets, succesfully got flow id: $flow_id");
 
+    # say("Current flow id: $flow_id" . "\n Flow table: " . Dumper(%flow_table));
     # If packet is part of a known flow:
     if ( defined (my $value_array = $flow_table{$flow_id})) { 
         my $last_sock_index = $value_array->[0]; # the index to the global subtunnel and sock arrays
