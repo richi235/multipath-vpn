@@ -463,7 +463,7 @@ sub select_adaptively
             $opti_sock_id = $subtun_hash->{sock_id};
         }
     }
-    $ALGOLOG->NOTICE("selected sock: $opti_sock_id, with weighted_fill: $min_weighted_fill");
+    $ALGOLOG->NOTICE("selected sock: $opti_sock_id, with weighted_fill: $min_weighted_fill\n");
     return $opti_sock_id;
 }
 # TODOS:
