@@ -523,9 +523,9 @@ sub send_scheduler_afmt_fl
         my $last_send_time = $value_array->[1];
 
         # How to calculate times?
-        # Is basic perl time precise enough? do i need a special high res module?
+        # Is basic perl time precise enough? do i need a special high res module? --> Time::HiRes
         my $now = time();
-        my $delta = tv_interval($last_send_time, $now); # time difference between last send and now
+        my $delta = $now - $last_send_time;
         my $ls_dccp_info_struct = getsockopt($subtun_sockets[$last_sock_index],
                                             SOL_DCCP,
                                             DCCP_SOCKOPT_CCID_TX_INFO
