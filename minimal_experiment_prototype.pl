@@ -525,7 +525,7 @@ sub send_scheduler_afmt_fl
         # How to calculate times?
         # Is basic perl time precise enough? do i need a special high res module? --> Time::HiRes
         my $now = time();
-        my $delta = $now - $last_send_time;
+        my $delta = $now - $last_send_time; # delta in seconds (float with 10^-6 accuracy (microseconds))
         my $ls_dccp_info_struct = getsockopt($subtun_sockets[$last_sock_index],
                                             SOL_DCCP,
                                             DCCP_SOCKOPT_CCID_TX_INFO
@@ -562,8 +562,9 @@ sub send_scheduler_afmt_fl
 
             my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate, $rto, $ipi)
                 = unpack('QQLLLLL', $dccp_info_struct);
-
-            if ( $srtt + ($delta * 1000_000) >= $ls_srtt ) {
+            # $srtt is in microseconds (10^-6), $delta is in seconds
+            # therefore * 1_000_000 to make them comparable
+            if ( $srtt + ($delta * 1_000_000) >= $ls_srtt ) {
                 my $sock_send_fill = get_sock_sendbuffer_fill($subtun_sockets[$i]);
                 my $sock_hash = {
                             sock_id     => $i,
