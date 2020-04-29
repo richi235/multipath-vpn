@@ -613,10 +613,10 @@ sub send_scheduler_afmt_fl
         my $packet_size = bytes::length($_[0]);
         my $opti_sock_id = select_adaptively(\@applicable_subtun_hashes, $packet_size);
 
-        # since $value_array is a ref to the array, the following
-        # also updates the real array in %flow_table
-        $value_array->[0] = $opti_sock_id;
-        $value_array->[1] = time();
+        # we create a new value_array and put a ref to it into the %flow_table
+        $value_array = [$opti_sock_id, time()];
+        $flow_table{$flow_id} = $value_array;
+
         $ALGOLOG->NOTICE("send_sched_afmt(): Started new flow send through sock id: $opti_sock_id");
         $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0] );
 
