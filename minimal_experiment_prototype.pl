@@ -852,7 +852,7 @@ sub dccp_subtun_minimal_send
     my $packet_size = $_[ARG1];
 
     my $actually_sent_bytes =  $_[HEAP]->{subtun_sock}->syswrite($payload);
-    TXRXLOG->ERR("%L %F : $!") if (!defined($actually_sent_bytes));
+    $TXRXLOG->ERR("%L %F : $!") if (!defined($actually_sent_bytes));
     $TXRXLOG->DEBUG("Sent payload through DCCP subtunnel $actually_sent_bytes of $packet_size bytes");
 }
 
