@@ -584,7 +584,7 @@ sub send_scheduler_afmt_fl
         $value_array->[0] = $opti_sock_id;
         $value_array->[1] = time();
         $ALGOLOG->NOTICE("send_scheduler_afmt_fl(): continuing existing flow $flow_id , using sock id: $opti_sock_id, packet size: $packet_size\n");
-        $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0] );
+        $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0], $packet_size );
         return;
     } else { # packet starts a new flow
         # prepare the array of available subtun hashes
@@ -620,7 +620,7 @@ sub send_scheduler_afmt_fl
         $flow_table{$flow_id} = $value_array;
 
         $ALGOLOG->NOTICE("send_sched_afmt(): Started new flow send through sock id: $opti_sock_id , packet size: $packet_size\n");
-        $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0] );
+        $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0], $packet_size );
 
         return;
     }
@@ -839,16 +839,20 @@ sub setup_dccp_client
 sub dccp_subtun_minimal_recv
 {
     my $curinput = undef;
-    $_[HEAP]{subtun_sock}->sysread($curinput, 1600);
+
+    my $bytes_read = $_[HEAP]{subtun_sock}->sysread($curinput, 1600);
+    $TXRXLOG->DEBUG("Recieved one DCCP packet. $bytes_read bytes");
+
     $_[KERNEL]->call($tuntap_session => "put_into_tun_device", $curinput);
-    $TXRXLOG->DEBUG("Recieved one DCCP packet");
 }
 
 sub dccp_subtun_minimal_send
 {
     my $payload = $_[ARG0];
-    $_[HEAP]->{subtun_sock}->syswrite($payload);
-    $TXRXLOG->DEBUG("Sending payload through DCCP subtunnel");
+    my $packet_size = $_[ARG1];
+
+    my $actually_sent_bytes =  $_[HEAP]->{subtun_sock}->syswrite($payload);
+    $TXRXLOG->DEBUG("Sent payload through DCCP subtunnel $actually_sent_bytes of $packet_size bytes");
 }
 
 sub dccp_server_new_client {
