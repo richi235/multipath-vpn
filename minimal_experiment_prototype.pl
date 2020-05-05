@@ -583,7 +583,7 @@ sub send_scheduler_afmt_fl
         # also updates the real array in %flow_table
         $value_array->[0] = $opti_sock_id;
         $value_array->[1] = time();
-        $ALGOLOG->NOTICE("send_scheduler_afmt_fl(): continuing existing flow, using sock id: $opti_sock_id\n");
+        $ALGOLOG->NOTICE("send_scheduler_afmt_fl(): continuing existing flow $flow_id , using sock id: $opti_sock_id\n");
         $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0] );
         return;
     } else { # packet starts a new flow
