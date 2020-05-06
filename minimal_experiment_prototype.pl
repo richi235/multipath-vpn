@@ -153,6 +153,7 @@ use constant TUNNEL_DEVICE => '/dev/net/tun';
 use constant SOCK_DCCP      =>  6;
 use constant IPPROTO_DCCP   => 33;
 use constant DCCP_SOCKOPT_CCID_TX_INFO  => 192;
+use constant DCCP_SOCKOPT_GET_CUR_MPS   => 5;
 use constant SOL_DCCP       => 269;
 use constant SIOCOUTQ       => 21521;
 
