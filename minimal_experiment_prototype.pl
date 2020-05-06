@@ -851,8 +851,15 @@ sub dccp_subtun_minimal_send
     my $payload = $_[ARG0];
     my $packet_size = $_[ARG1];
 
+    # If loglevel is debug: ask dccp socket for max packet size and print it
+    if ( $TXRXLOG->level() eq 'DEBUG' ) {
+        my $packed = $_[HEAP]{subtun_sock}->getsockopt(SOL_DCCP, DCCP_SOCKOPT_GET_CUR_MPS);
+        my $max_packet_size = unpack("I", $packed);
+        say("accepted subtun max packet size: $max_packet_size");
+    }
+
     my $actually_sent_bytes =  $_[HEAP]->{subtun_sock}->syswrite($payload);
-    $TXRXLOG->ERR("%L %F : $!") if (!defined($actually_sent_bytes));
+    $TXRXLOG->ERR($!) if (!defined($actually_sent_bytes));
     $TXRXLOG->DEBUG("Sent payload through DCCP subtunnel $actually_sent_bytes of $packet_size bytes");
 }
 
@@ -868,11 +875,14 @@ sub dccp_server_new_client {
                 # And the corresponding subtun socket in a second array, at same index number
                 push(@subtun_sessions, $_[SESSION]->ID());
                 push(@subtun_sockets, $_[ARG0]);
-                say(colored("DCCP Server: ", 'bold green')
+                $CONLOG->WARN(colored("DCCP Server: ", 'bold green')
                        . "Succesfully accepted one subtunnel");
+                my $packed = $_[HEAP]{subtun_sock}->getsockopt(SOL_DCCP, DCCP_SOCKOPT_GET_CUR_MPS);
+                my $max_packet_size = unpack("I", $packed);
+                say("accepted subtun max packet size: $max_packet_size");
+                # $_[HEAP]{subtun_sock}->setsockopt(SOL_SOCKET, SO_SNDBUF, 2048);
+
                 $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_data_received");
-                $CONLOG->NOTICE("Server side: New Connection Socket: \n"
-                        . Dumper($_[HEAP]{subtun_sock}));
             },
             on_data_received => \&dccp_subtun_minimal_recv,
             on_data_to_send => \&dccp_subtun_minimal_send,
