@@ -854,7 +854,7 @@ sub dccp_subtun_minimal_send
 
     # If loglevel is debug: ask dccp socket for max packet size and print it
     if ( $TXRXLOG->level() eq 'DEBUG' ) {
-        my $packed = $_[HEAP]{subtun_sock}->getsockopt(SOL_DCCP, DCCP_SOCKOPT_GET_CUR_MPS);
+        my $packed = getsockopt($_[HEAP]{subtun_sock}, SOL_DCCP, DCCP_SOCKOPT_GET_CUR_MPS);
         my $max_packet_size = unpack("I", $packed);
         say("accepted subtun max packet size: $max_packet_size");
     }
@@ -878,7 +878,7 @@ sub dccp_server_new_client {
                 push(@subtun_sockets, $_[ARG0]);
                 $CONLOG->WARN(colored("DCCP Server: ", 'bold green')
                        . "Succesfully accepted one subtunnel");
-                my $packed = $_[HEAP]{subtun_sock}->getsockopt(SOL_DCCP, DCCP_SOCKOPT_GET_CUR_MPS);
+                my $packed = getsockopt($_[HEAP]{subtun_sock}, SOL_DCCP, DCCP_SOCKOPT_GET_CUR_MPS);
                 my $max_packet_size = unpack("I", $packed);
                 say("accepted subtun max packet size: $max_packet_size");
                 # $_[HEAP]{subtun_sock}->setsockopt(SOL_SOCKET, SO_SNDBUF, 2048);
