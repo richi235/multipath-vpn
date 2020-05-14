@@ -467,6 +467,22 @@ sub select_adaptively
     $ALGOLOG->NOTICE("selected sock: $opti_sock_id, with weighted_fill: $min_weighted_fill");
     return $opti_sock_id;
 }
+# Takes care of all the error handling and the unpack()
+# + the idiosyncratic getsockopt parameters
+sub dccp_get_tx_infos
+{
+    my $sock = shift;
+    my $ls_dccp_info_struct = getsockopt($sock, SOL_DCCP, DCCP_SOCKOPT_CCID_TX_INFO);
+    ALGOLOG->ERR($!) if (!defined($ls_dccp_info_struct));
+
+    my ($ls_send_rate, $ls_recv_rate, $ls_calc_rate, $ls_srtt, $ls_loss_event_rate,
+        $ls_rto, $ls_ipi)
+        = unpack('QQLLLLL', $ls_dccp_info_struct);
+    return ($ls_send_rate, $ls_calc_rate, $ls_srtt);
+}
+
+
+
 # TODOS:
 #  [x]subtun stats mit in ds array mit rein wursteln
 #     - hash struktur überlegen
@@ -527,15 +543,9 @@ sub send_scheduler_afmt_fl
         # Is basic perl time precise enough? do i need a special high res module? --> Time::HiRes
         my $now = time();
         my $delta = $now - $last_send_time; # delta in seconds (float with 10^-6 accuracy (microseconds))
-        my $ls_dccp_info_struct = getsockopt($subtun_sockets[$last_sock_index],
-                                            SOL_DCCP,
-                                            DCCP_SOCKOPT_CCID_TX_INFO
-                                        );
-        ALGOLOG->ERR($!) if (!defined($ls_dccp_info_struct));
 
-        my ($ls_send_rate, $ls_recv_rate, $ls_calc_rate, $ls_srtt, $ls_loss_event_rate,
-            $ls_rto, $ls_ipi)
-            = unpack('QQLLLLL', $ls_dccp_info_struct);
+        my ($ls_send_rate, $ls_calc_rate, $ls_srtt) =
+        dccp_get_tx_infos($subtun_sockets[$last_sock_index]);
 
         my $sock_send_fill = get_sock_sendbuffer_fill($subtun_sockets[$last_sock_index]);
 
@@ -554,15 +564,8 @@ sub send_scheduler_afmt_fl
                 next;
             }
 
-            my $dccp_info_struct = getsockopt($subtun_sockets[$i],
-                SOL_DCCP,
-                DCCP_SOCKOPT_CCID_TX_INFO
-                );
-
-            ALGOLOG->ERR($!) if (!defined($dccp_info_struct));
-
-            my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate, $rto, $ipi)
-                = unpack('QQLLLLL', $dccp_info_struct);
+            my ($send_rate, $calc_rate, $srtt) =
+                dccp_get_tx_infos($subtun_sockets[$i]);
             # $srtt is in microseconds (10^-6), $delta is in seconds
             # therefore * 1_000_000 to make them comparable
             if ( $srtt + ($delta * 1_000_000) >= $ls_srtt ) {
@@ -592,14 +595,8 @@ sub send_scheduler_afmt_fl
         # with the hashes containing all the stats necesarry for the algo to decide
         my @applicable_subtun_hashes;
         for (my $i = 0; $i < $subtun_count; $i++) {
-            my $dccp_info_struct = getsockopt($subtun_sockets[$i],
-                                                SOL_DCCP,
-                                                DCCP_SOCKOPT_CCID_TX_INFO
-                                            );
-            $ALGOLOG->ERR($!) if (!defined($dccp_info_struct));
-
-            my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate,
-                $rto, $ipi) = unpack('QQLLLLL', $dccp_info_struct);
+            my ($send_rate, $calc_rate, $srtt) =
+                dccp_get_tx_infos($subtun_sockets[$i]);
 
             my $sock_send_fill = get_sock_sendbuffer_fill($subtun_sockets[$i]);
 
@@ -626,6 +623,7 @@ sub send_scheduler_afmt_fl
         return;
     }
 }
+
 sub tun_read {
     my $buf;
     while(sysread($_[HEAP]->{tun_device}, $buf , TUN_MAX_FRAME ))
@@ -672,29 +670,18 @@ sub send_scheduler_rr
     }
 
     if ( $loglevel_algo eq 'INFO'
-         || $loglevel_algo eq 'DEBUG') {
+         || $loglevel_algo eq 'DEBUG')
+    {
         my $sock_sendbuffer_fill = get_sock_sendbuffer_fill($cur_subtun);
 
-        # Get cwnd
-        # Steps: 
-        # 1. call getsockopt()
-        # 2. Get the cwnd from the now filled struct
-        #    - unpack, and then?
-        my $dccp_info_struct = getsockopt($cur_subtun,
-            SOL_DCCP,
-            DCCP_SOCKOPT_CCID_TX_INFO
-            );
-        say($!) if (!defined($dccp_info_struct));
-
-        my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate, $rto, $ipi)
-            = unpack('QQLLLLL', $dccp_info_struct);
+        my ($send_rate, $calc_rate, $srtt) =
+            dccp_get_tx_infos($subtun_sockets[$i]);
 
         $ALGOLOG->INFO("Just scheduled 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels\n" .
             "Packet size:          " . bytes::length($_[0]) . "\n" .
             "Send rate:            " . $send_rate . "\n" .
             "Sock sendbuffer fill: " . $sock_sendbuffer_fill . "\n" .
             "SRTT:                 " . $srtt);
-
     }
 
     $poe_kernel->call( $subtun_sessions[$current_subtun_id], "on_data_to_send", $_[0] );
