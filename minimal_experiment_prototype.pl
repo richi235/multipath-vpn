@@ -530,7 +530,7 @@ sub send_scheduler_afmt_fl
         # just returning without sending the packet is equivalent to droppning it
     }
 
-    $ALGOLOG->DEBUG("send_scheduler_afmt_fl() called with $subtun_count sockets, succesfully got flow id: $flow_id");
+    $ALGOLOG->NOTICE("\nsend_scheduler_afmt_fl() called with $subtun_count sockets, succesfully got flow id: $flow_id");
 
     # say("Current flow id: $flow_id" . "\n Flow table: " . Dumper(%flow_table));
     # If packet is part of a known flow:
@@ -589,7 +589,7 @@ sub send_scheduler_afmt_fl
         # also updates the real array in %flow_table
         $value_array->[0] = $opti_sock_id;
         $value_array->[1] = time();
-        $ALGOLOG->NOTICE("send_scheduler_afmt_fl(): continuing existing flow $flow_id , using sock id: $opti_sock_id, packet size: $packet_size\n");
+        $ALGOLOG->NOTICE("send_scheduler_afmt_fl(): continuing existing flow $flow_id , using sock id: $opti_sock_id, packet size: $packet_size");
         $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0], $packet_size );
         return;
     } else { # packet starts a new flow
@@ -783,10 +783,8 @@ sub start_tun_session
 
 sub setup_dccp_client
 {
-
     my $subtunname = shift;
     my $new_subtunnel  = $config->{subtunnels}->{$subtunname};
-
 
     POE::Session->create(
     inline_states => {
@@ -850,8 +848,8 @@ sub dccp_subtun_minimal_send
     }
 
     my $actually_sent_bytes =  $_[HEAP]->{subtun_sock}->syswrite($payload);
-    $TXRXLOG->ERR($!) if (!defined($actually_sent_bytes));
-    $TXRXLOG->DEBUG("Sent payload through DCCP subtunnel $actually_sent_bytes of $packet_size bytes");
+    $TXRXLOG->ERR("dccp_subtun_minimal_send(): socket error: errno: $!") if (!defined($actually_sent_bytes));
+#    $TXRXLOG->DEBUG("Sent payload through DCCP subtunnel $actually_sent_bytes of $packet_size bytes");
 }
 
 sub dccp_server_new_client {
