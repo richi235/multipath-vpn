@@ -456,6 +456,7 @@ sub select_adaptively
         $ALGOLOG->NOTICE("select_adaptively(): sock_id: $subtun_hash->{sock_id}"
                            . " | srtt:" . $subtun_hash->{srtt}/1000 . "ms"
                            . " | send_rate:" . ($subtun_hash->{send_rate}*64)/1000 . "kB/s"
+                           . " | calc send_rate:" . ($subtun_hash->{calc_rate})/1000 . "kB/s"
                            . " | sock_fill: $subtun_hash->{sock_fill} Byte"
                            . " | resulting weighted_fill: $weighted_fill");
 
@@ -574,7 +575,8 @@ sub send_scheduler_afmt_fl
                             sock_id     => $i,
                             srtt        => $srtt,
                             send_rate   => $send_rate,
-                            sock_fill   => $sock_send_fill
+                            sock_fill   => $sock_send_fill,
+                            calc_rate   => $calc_rate
                 };
                 push(@applicable_subtun_hashes, $sock_hash);
             }
@@ -604,7 +606,8 @@ sub send_scheduler_afmt_fl
                 sock_id     => $i,
                 srtt        => $srtt,
                 send_rate   => $send_rate,
-                sock_fill   => $sock_send_fill
+                sock_fill   => $sock_send_fill,
+                calc_rate   => $calc_rate
             };
 
             push(@applicable_subtun_hashes, $sock_hash);
@@ -745,7 +748,7 @@ sub config_tun_interface
                 . " up" );
     }
     else {
-    # if not do something obscure with bridge interfaces
+    # if no IP+subnet found in conf file, do something obscure with bridge interfaces
         system( "ifconfig " . $heap->{tun_if_name} . " up" );
         system( "brctl", "addif", $config->{local}->{ip}, $heap->{tun_if_name} );
     }
