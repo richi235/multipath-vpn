@@ -678,7 +678,7 @@ sub send_scheduler_rr
         my $sock_sendbuffer_fill = get_sock_sendbuffer_fill($cur_subtun);
 
         my ($send_rate, $calc_rate, $srtt) =
-            dccp_get_tx_infos($subtun_sockets[$i]);
+            dccp_get_tx_infos($cur_subtun);
 
         $ALGOLOG->INFO("Just scheduled 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels\n" .
             "Packet size:          " . bytes::length($_[0]) . "\n" .
