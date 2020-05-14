@@ -473,13 +473,13 @@ sub select_adaptively
 sub dccp_get_tx_infos
 {
     my $sock = shift;
-    my $ls_dccp_info_struct = getsockopt($sock, SOL_DCCP, DCCP_SOCKOPT_CCID_TX_INFO);
-    ALGOLOG->ERR($!) if (!defined($ls_dccp_info_struct));
+    my $dccp_info_struct = getsockopt($sock, SOL_DCCP, DCCP_SOCKOPT_CCID_TX_INFO);
+    ALGOLOG->ERR($!) if (!defined($dccp_info_struct));
 
-    my ($ls_send_rate, $ls_recv_rate, $ls_calc_rate, $ls_srtt, $ls_loss_event_rate,
-        $ls_rto, $ls_ipi)
-        = unpack('QQLLLLL', $ls_dccp_info_struct);
-    return ($ls_send_rate, $ls_calc_rate, $ls_srtt);
+    my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate,
+        $rto, $ipi)
+        = unpack('QQLLLLL', $dccp_info_struct);
+    return ($send_rate, $calc_rate, $srtt);
 }
 
 
