@@ -479,6 +479,8 @@ sub dccp_get_tx_infos
     my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate,
         $rto, $ipi)
         = unpack('QQLLLLL', $dccp_info_struct);
+
+    say(colored("send_rate: $send_rate | calculated_send_rate: $calc_rate | SRTT: $srtt ", "bold blue"));
     return ($send_rate, $calc_rate, $srtt);
 }
 
