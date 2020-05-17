@@ -480,7 +480,11 @@ sub dccp_get_tx_infos
         $rto, $ipi)
         = unpack('QQLLLLL', $dccp_info_struct);
 
-    say(colored("send_rate: $send_rate | calculated_send_rate: $calc_rate | SRTT: $srtt ", "bold blue"));
+    # say(colored("send_rate: " . ($send_rate*64)/1000 . " kB/s"
+    #                 . " | calculated_send_rate:" . $calc_rate/1000 . "kB/s"
+    #                 . " | SRTT: " . $srtt/1000 . "ms"
+    #                 . " | ccwnd: " . (($send_rate*64)*($srtt/1000_000))/1000 . "kB"
+    #               , "bold blue"));
     return ($send_rate, $calc_rate, $srtt);
 }
 
