@@ -210,7 +210,7 @@ my %flow_table;
 
 ### Signal Handlers ###
 $SIG{INT} = sub { die "Caught a SIGINT Signal. Current Errno: $!" };
-
+$SIG{QUIT} = \&toggle_sched_algo;
 
 ####### Section 1 START: Function Definitions #############
 sub parse_cli_args
@@ -220,6 +220,23 @@ sub parse_cli_args
                'lalgo=s'      => \$loglevel_algo,
                'sched=s'      => \$sched_algo,
                'lcon=s'       => \$loglevel_connect);
+}
+
+sub toggle_sched_algo
+{
+    if ( $sched_algo eq 'rr' ) {
+        # Switch RR --> AFMT-FL
+        $sched_algo = 'afmt_fl';
+        $packet_scheduler = \&send_scheduler_afmt_fl;
+        say("SWITCHER: Switched sched algo: RR --> AFMT_FL");
+    } elsif ( $sched_algo eq 'afmt_fl' ) {
+        # Switch AFMT-FL --> RR
+        $sched_algo = 'rr';
+        $packet_scheduler = \&send_scheduler_rr;
+        say("SWITCHER: Switched sched algo: AFMT_FL --> RR");
+    } else {
+        die("WTF, should toggle sched algo but there's no sched algo I know of configured\n");
+    }
 }
 
 sub init_loggers
