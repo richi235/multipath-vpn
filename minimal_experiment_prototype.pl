@@ -902,10 +902,40 @@ sub dccp_server_new_client {
         args => [$client_socket],
     );
 }
+
+sub evaluate_if_server
+{
+    my $server_sockets = 0;
+    my $subtun_count = 0;
+#    say(Dumper($config));
+    for my $subtun_name ( keys(%{$config->{subtunnels}}) ) {
+
+        my $cur_subtun = $config->{subtunnels}->{$subtun_name};
+        $subtun_count++;
+
+        if ( !defined($cur_subtun->{dstip})
+                 && !defined($cur_subtun->{dstport}))
+        {
+            $server_sockets++;
+        }
+    }
+
+    if ( $server_sockets == $subtun_count ) {
+        $dccp_Texit = 1;
+        say(colored("I'm T_exit", "bold green"));
+    } elsif ($server_sockets == 0) {
+        $dccp_Texit = 0;
+        say(colored("I'm T_entry", "bold yellow"));
+    } else {
+        die("I am server for some subtunnels and client for others, why????");
+    }
+}
+
 ####### Section 1 END: Function Definitions #############
 
 parse_cli_args();
 parse_conf_file();
+evaluate_if_server();
 init_loggers();
 
 if ( $sched_algo eq 'afmt_fl') {
