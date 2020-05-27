@@ -497,12 +497,13 @@ sub dccp_get_tx_infos
         $rto, $ipi)
         = unpack('QQLLLLL', $dccp_info_struct);
 
-    # say(colored("send_rate: " . ($send_rate*64)/1000 . " kB/s"
-    #                 . " | calculated_send_rate:" . $calc_rate/1000 . "kB/s"
-    #                 . " | SRTT: " . $srtt/1000 . "ms"
-    #                 . " | ccwnd: " . (($send_rate*64)*($srtt/1000_000))/1000 . "kB"
-    #               , "bold blue"));
-    return ($send_rate, $calc_rate, $srtt);
+    say(colored("send_rate: " . ($send_rate >> 6) >> 10 . " kB/s"  #  / 64  / 1024
+                    . " | peer recv_rate:" . $recv_rate >> 16 . "kB/s"
+                    . " | calculated_send_rate:" . $calc_rate/1000 . "kB/s"
+                    . " | SRTT: " . $srtt/1000 . "ms"
+                    . " | ccwnd: " . (($send_rate*64)*($srtt/1000_000))/1000 . "kB"
+                  , "bold blue"));
+    return ($send_rate, $calc_rate, $srtt, $recv_rate);
 }
 
 
