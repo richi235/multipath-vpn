@@ -468,11 +468,11 @@ sub select_adaptively
             #  - evtl. mit reinwürgen in das @applicable_subtun_hashes array
             #    - ja why not, immernoch billiger als syscall 2 mal machen
             ( ($subtun_hash->{sock_fill} + $packet_size) /
-                  ($subtun_hash->{send_rate} || 1) )
+                  ($subtun_hash->{send_rate} >> 6 || 1) )
             * $subtun_hash->{srtt};
         $ALGOLOG->NOTICE("select_adaptively(): sock_id: $subtun_hash->{sock_id}"
                            . " | srtt:" . $subtun_hash->{srtt}/1000 . "ms"
-                           . " | send_rate:" . ($subtun_hash->{send_rate}*64)/1000 . "kB/s"
+                           . " | send_rate:" . ($subtun_hash->{send_rate} >> 6)/1000 . "kB/s"
 #                           . " | calc send_rate:" . ($subtun_hash->{calc_rate})/1000 . "kB/s"
                            . " | sock_fill: $subtun_hash->{sock_fill} Byte"
                            . " | resulting weighted_fill: $weighted_fill");
