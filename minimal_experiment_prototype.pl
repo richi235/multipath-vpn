@@ -467,7 +467,7 @@ sub select_adaptively
             #  - habs ja vorher schonmal abgefragt für flow-awareness
             #  - evtl. mit reinwürgen in das @applicable_subtun_hashes array
             #    - ja why not, immernoch billiger als syscall 2 mal machen
-            ( ($subtun_hash->{sock_fill} + $packet_size) /
+            ( ( ($subtun_hash->{sock_fill}*$subtun_hash->{sock_fill}) + $packet_size) /
                   ($subtun_hash->{send_rate} >> 6 || 1) )
             * $subtun_hash->{srtt};
         $ALGOLOG->NOTICE("select_adaptively(): sock_id: $subtun_hash->{sock_id}"
