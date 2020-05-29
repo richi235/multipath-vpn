@@ -1,4 +1,9 @@
 #!/usr/bin/env perl
+# This is a bulk send dccp client
+# It waits on the conn socket and whenever it's ready to send
+# it sends 1420 bytes. Used to test out the maximum goodput a DCCP
+# connection can deliver
+
 
 use warnings;
 use strict;
@@ -8,6 +13,8 @@ use POE qw(Wheel::SocketFactory Wheel::ReadWrite);
 
 use constant SOCK_DCCP      =>  6;
 use constant IPPROTO_DCCP   => 33;
+
+my $payload = "a" x 1400;
 
 POE::Session->create(
   inline_states => {
@@ -31,11 +38,17 @@ POE::Session->create(
             InputEvent => "on_input_from_server",
         );
         $_[HEAP]{our_wheel} = $io_wheel;
+        $_[HEAP]{con_sock} = $connection_socket;
+
         POE::Kernel->yield("send_loop");
+        # POE::Kernel->select_write($connection_socket, "handle_writable");
+    },
+    handle_writable => sub {
+        $_[HEAP]{our_wheel}->put($payload)
     },
     send_loop => sub {
-        $_[HEAP]{our_wheel}->put("aaaaaaa");
-        POE::Kernel->delay( send_loop => 2);
+        $_[HEAP]{our_wheel}->put($payload);
+        POE::Kernel->delay( send_loop => 0.00001);
     },
     on_input_from_server => sub {
         # Handle server input. (print it to terminal)
