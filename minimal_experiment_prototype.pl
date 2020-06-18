@@ -512,13 +512,34 @@ sub select_adaptively
 # + the idiosyncratic getsockopt parameters
 sub dccp_get_tx_infos
 {
-    my $sock = shift;
+    my $socket_id = shift;
+    my $sock = $subtun_sockets[$socket_id];
     my $dccp_info_struct = getsockopt($sock, SOL_DCCP, DCCP_SOCKOPT_CCID_TX_INFO);
     $ALGOLOG->ERR($!) if (!defined($dccp_info_struct));
+    my $sock_hash;
 
-    my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate,
-        $rto, $ipi)
-        = unpack('QQLLLLL', $dccp_info_struct);
+    if ( $ccid_to_use == 3) {
+        my ($send_rate, $recv_rate, $calc_rate, $srtt, $loss_event_rate,
+            $rto, $ipi)
+            = unpack('QQLLLLL', $dccp_info_struct);
+        my $sock_fill = get_sock_sendbuffer_fill($sock);
+        $sock_hash = {
+            sock_id     => $socket_id,
+            srtt        => $srtt,
+            send_rate   => $send_rate,
+            sock_fill   => $sock_fill,
+        };
+    } elsif ($ccid_to_use == 2) {
+        # TODOs:
+        # * oben struct definition für tx_info struct hinschribene und unpack() templete raussuchen
+        # * unpack hier machen
+        # * überlegen wie ich das mit den return values hin geschichtel
+        # * linux source lesen, sind ccid2 werte iwie scaliert?
+        my ($cwnd, $srtt, $pipe, $buffer_fill, $cur_mps)
+            = unpack('LLLii', $dccp_info_struct);
+    } else {
+        die("dccp_get_tx_infos(): unknown ccid used\n");
+    }
 
     say(colored("send_rate: " . ($send_rate >> 16) . " kB/s"  #  / 64  / 1024
                     . " | peer recv_rate:" . ($recv_rate >> 16) . "kB/s"
@@ -527,8 +548,7 @@ sub dccp_get_tx_infos
                     , "bold blue"));
     # I decided to not print the calculated send_rate because it was almost always 0 in my experiments
 
-    my $sock_fill = get_sock_sendbuffer_fill($sock);
-    return ($send_rate, $calc_rate, $srtt, $recv_rate, $sock_fill);
+    return $sock_hash;
 }
 
 
@@ -594,15 +614,7 @@ sub send_scheduler_afmt_fl
         my $now = time();
         my $delta = $now - $last_send_time; # delta in seconds (float with 10^-6 accuracy (microseconds))
 
-        my ($ls_send_rate, $ls_calc_rate, $ls_srtt, $sock_send_fill) =
-            dccp_get_tx_infos($subtun_sockets[$last_sock_index]);
-
-        my $last_sock_hash = {
-            sock_id     => $last_sock_index,
-            srtt        => $ls_srtt,
-            send_rate   => $ls_send_rate,
-            sock_fill   => $sock_send_fill
-        };
+        my $last_sock_hash = dccp_get_tx_infos($last_sock_index);
 
         my @applicable_subtun_hashes;
         push(@applicable_subtun_hashes, $last_sock_hash);
@@ -612,17 +624,10 @@ sub send_scheduler_afmt_fl
                 next;
             }
 
-            my ($send_rate, $calc_rate, $srtt, $sock_send_fill) =
-                dccp_get_tx_infos($subtun_sockets[$i]);
+            my $sock_hash = dccp_get_tx_infos($subtun_sockets[$i]);
             # $srtt is in microseconds (10^-6), $delta is in seconds
             # therefore * 1_000_000 to make them comparable
-            if ( $srtt + ($delta * 1_000_000) >= $ls_srtt ) {
-                my $sock_hash = {
-                            sock_id     => $i,
-                            srtt        => $srtt,
-                            send_rate   => $send_rate,
-                            sock_fill   => $sock_send_fill,
-                };
+            if ( $sock_hash->{srtt} + ($delta * 1_000_000) >= $last_sock_hash->{srtt} ) {
                 push(@applicable_subtun_hashes, $sock_hash);
             }
         }
@@ -641,17 +646,9 @@ sub send_scheduler_afmt_fl
         # prepare the array of available subtun hashes
         # with the hashes containing all the stats necesarry for the algo to decide
         my @applicable_subtun_hashes;
-        for (my $i = 0; $i < $subtun_count; $i++) {
-            my ($send_rate, $calc_rate, $srtt, $sock_send_fill) =
-                dccp_get_tx_infos($subtun_sockets[$i]);
-
-            my $sock_hash = {
-                sock_id     => $i,
-                srtt        => $srtt,
-                send_rate   => $send_rate,
-                sock_fill   => $sock_send_fill,
-            };
-
+        for (my $i = 0; $i < $subtun_count; $i++)
+        {
+            my $sock_hash = dccp_get_tx_infos($i);
             push(@applicable_subtun_hashes, $sock_hash);
         }
 
