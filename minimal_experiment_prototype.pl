@@ -505,7 +505,9 @@ sub dccp_get_tx_infos
                     . " | ccwnd: " . (($send_rate >> 6)*($srtt/1_000_000))/1_000 . "kB"
                     , "bold blue"));
     # I decided to not print the calculated send_rate because it was almost always 0 in my experiments
-    return ($send_rate, $calc_rate, $srtt, $recv_rate);
+
+    my $sock_fill = get_sock_sendbuffer_fill($sock);
+    return ($send_rate, $calc_rate, $srtt, $recv_rate, $sock_fill);
 }
 
 
@@ -571,10 +573,8 @@ sub send_scheduler_afmt_fl
         my $now = time();
         my $delta = $now - $last_send_time; # delta in seconds (float with 10^-6 accuracy (microseconds))
 
-        my ($ls_send_rate, $ls_calc_rate, $ls_srtt) =
-        dccp_get_tx_infos($subtun_sockets[$last_sock_index]);
-
-        my $sock_send_fill = get_sock_sendbuffer_fill($subtun_sockets[$last_sock_index]);
+        my ($ls_send_rate, $ls_calc_rate, $ls_srtt, $sock_send_fill) =
+            dccp_get_tx_infos($subtun_sockets[$last_sock_index]);
 
         my $last_sock_hash = {
             sock_id     => $last_sock_index,
@@ -591,12 +591,11 @@ sub send_scheduler_afmt_fl
                 next;
             }
 
-            my ($send_rate, $calc_rate, $srtt) =
+            my ($send_rate, $calc_rate, $srtt, $sock_send_fill) =
                 dccp_get_tx_infos($subtun_sockets[$i]);
             # $srtt is in microseconds (10^-6), $delta is in seconds
             # therefore * 1_000_000 to make them comparable
             if ( $srtt + ($delta * 1_000_000) >= $ls_srtt ) {
-                my $sock_send_fill = get_sock_sendbuffer_fill($subtun_sockets[$i]);
                 my $sock_hash = {
                             sock_id     => $i,
                             srtt        => $srtt,
@@ -623,10 +622,8 @@ sub send_scheduler_afmt_fl
         # with the hashes containing all the stats necesarry for the algo to decide
         my @applicable_subtun_hashes;
         for (my $i = 0; $i < $subtun_count; $i++) {
-            my ($send_rate, $calc_rate, $srtt) =
+            my ($send_rate, $calc_rate, $srtt, $sock_send_fill) =
                 dccp_get_tx_infos($subtun_sockets[$i]);
-
-            my $sock_send_fill = get_sock_sendbuffer_fill($subtun_sockets[$i]);
 
             my $sock_hash = {
                 sock_id     => $i,
@@ -701,9 +698,7 @@ sub send_scheduler_rr
     if ( $loglevel_algo eq 'INFO'
          || $loglevel_algo eq 'DEBUG')
     {
-        my $sock_sendbuffer_fill = get_sock_sendbuffer_fill($cur_subtun);
-
-        my ($send_rate, $calc_rate, $srtt) =
+        my ($send_rate, $calc_rate, $srtt, $sock_sendbuffer_fill) =
             dccp_get_tx_infos($cur_subtun);
 
         $ALGOLOG->INFO("Just scheduled 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels\n" .
