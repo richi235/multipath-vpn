@@ -622,7 +622,6 @@ sub send_scheduler_afmt_fl
                             srtt        => $srtt,
                             send_rate   => $send_rate,
                             sock_fill   => $sock_send_fill,
-                            calc_rate   => $calc_rate
                 };
                 push(@applicable_subtun_hashes, $sock_hash);
             }
@@ -651,7 +650,6 @@ sub send_scheduler_afmt_fl
                 srtt        => $srtt,
                 send_rate   => $send_rate,
                 sock_fill   => $sock_send_fill,
-                calc_rate   => $calc_rate
             };
 
             push(@applicable_subtun_hashes, $sock_hash);
