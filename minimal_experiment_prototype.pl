@@ -42,7 +42,7 @@ It handles all events corresponding to sending packets to other Multipath VPN no
 Therefore this sessions takes TCP/UDP packets from the tun/tap interface, wraps them into UDP
 and delivers them to the other multipath VPN node configured in the conf file.
 
-=head3 [About the DCCP Info truct]
+=head3 [About the DCCP Info struct (CCID 3)]
 
 To get the dccp internals via getsockopt on a dccp socket you need the following call:
 
@@ -98,6 +98,27 @@ So creating a new nulled struct is:
   my $dccp_info_struct = pack('QQLLLLL');
 
 (because pack 0 pads if there's no input data)
+
+=head3 [About the DCCP Info struct (CCID 2)]
+
+/**  struct ccid2_tx_info (Congestion Control Infos)
+ *
+ * @tx_srtt:		     smoothed RTT estimate, scaled by 2^3
+ * @tx_cwnd:                 max number of packets the path can handle
+ * @tx_pipe:                 estimate of "in flight" packets
+ * @buffer_fill              number of bytes in send buffer
+ * @cur_mps                  current maximum packet size (in bytes)
+ */
+struct ccid2_tx_info {
+	u32			tx_cwnd;
+	u32			tx_srtt;
+	u32                     tx_pipe;
+	int                     buffer_fill;
+	int                     cur_mps;
+};
+
+in pack() template syntax: LLLii
+
 
 =head1 Doc of some Functions:
 
