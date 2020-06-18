@@ -714,18 +714,18 @@ sub send_scheduler_rr
         return;
     }
 
-    if ( $loglevel_algo eq 'INFO'
-         || $loglevel_algo eq 'DEBUG')
-    {
-        my ($send_rate, $calc_rate, $srtt, $sock_sendbuffer_fill) =
-            dccp_get_tx_infos($cur_subtun);
+    # if ( $loglevel_algo eq 'INFO'
+    #      || $loglevel_algo eq 'DEBUG')
+    # {
+    #     my ($send_rate, $calc_rate, $srtt, $sock_sendbuffer_fill) =
+    #         dccp_get_tx_infos($cur_subtun);
 
-        $ALGOLOG->INFO("Just scheduled 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels\n" .
-            "Packet size:          " . bytes::length($_[0]) . "\n" .
-            "Send rate:            " . $send_rate . "\n" .
-            "Sock sendbuffer fill: " . $sock_sendbuffer_fill . "\n" .
-            "SRTT:                 " . $srtt);
-    }
+    #     $ALGOLOG->INFO("Just scheduled 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels\n" .
+    #         "Packet size:          " . bytes::length($_[0]) . "\n" .
+    #         "Send rate:            " . $send_rate . "\n" .
+    #         "Sock sendbuffer fill: " . $sock_sendbuffer_fill . "\n" .
+    #         "SRTT:                 " . $srtt);
+    # }
 
     $poe_kernel->call( $subtun_sessions[$current_subtun_id], "on_data_to_send", $_[0] );
 
