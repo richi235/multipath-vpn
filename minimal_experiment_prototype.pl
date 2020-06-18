@@ -168,6 +168,7 @@ my $packet_scheduler;
 $| = 1;                    # disable terminal output buffering
 my $config   = {};
 my $conf_file_name = "/etc/multivpn.cfg";
+my $ccid_to_use = 2;
 
 # ## Log::Fast Loglevels ## One out of:
 # ERR
@@ -219,6 +220,7 @@ sub parse_cli_args
                'ltx=s'        => \$loglevel_txrx,
                'lalgo=s'      => \$loglevel_algo,
                'sched=s'      => \$sched_algo,
+               'ccid=i'       => \$ccid_to_use,
                'lcon=s'       => \$loglevel_connect);
 }
 
