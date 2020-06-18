@@ -537,14 +537,21 @@ sub dccp_get_tx_infos
         # * linux source lesen, sind ccid2 werte iwie scaliert?
         my ($cwnd, $srtt, $pipe, $buffer_fill, $cur_mps)
             = unpack('LLLii', $dccp_info_struct);
+        $sock_hash = {
+            sock_id     => $socket_id,
+            srtt        => $srtt,
+            send_rate   => $cwnd,
+            sock_fill   => $buffer_fill,
+        };
     } else {
         die("dccp_get_tx_infos(): unknown ccid used\n");
     }
 
-    say(colored("send_rate: " . ($send_rate >> 16) . " kB/s"  #  / 64  / 1024
-                    . " | peer recv_rate:" . ($recv_rate >> 16) . "kB/s"
-                    . " | SRTT: " . $srtt/1000 . "ms"
-                    . " | ccwnd: " . (($send_rate >> 6)*($srtt/1_000_000))/1_000 . "kB"
+    say(colored("send_rate/cwnd: " . ($sock_hash->{send_rate}) . " (B/s)"  #  / 64  / 1024
+                    # . " | peer recv_rate:" . ($recv_rate >> 16) . "kB/s"
+                    . " | SRTT: " . $sock_hash->{srtt} . "μs or ms*8"
+                    . " | sock_fill: " . $sock_hash->{sock_fill}
+                    # . " | ccwnd: " . (($send_rate >> 6)*($srtt/1_000_000))/1_000 . "kB"
                     , "bold blue"));
     # I decided to not print the calculated send_rate because it was almost always 0 in my experiments
 
