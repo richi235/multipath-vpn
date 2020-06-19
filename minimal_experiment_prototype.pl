@@ -525,7 +525,7 @@ sub dccp_get_tx_infos
         my $sock_fill = get_sock_sendbuffer_fill($sock);
         $sock_hash = {
             sock_id     => $socket_id,
-            srtt        => $srtt,
+            srtt        => $srtt,   # in μs (10^-6)
             send_rate   => $send_rate >> 6,
             sock_fill   => $sock_fill,
         };
@@ -539,7 +539,8 @@ sub dccp_get_tx_infos
             = unpack('LLLii', $dccp_info_struct);
         $sock_hash = {
             sock_id     => $socket_id,
-            srtt        => $srtt,
+            srtt        => ($srtt * 1_000) >> 3,  # smoothed RTT estimate, scaled by 2^3
+                           # converted to μs
             send_rate   => $cwnd,
             sock_fill   => $buffer_fill,
         };
