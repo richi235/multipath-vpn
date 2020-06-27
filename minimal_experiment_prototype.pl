@@ -138,7 +138,6 @@ use POE
 
 use Log::Fast;
 use IO::File;
-use IO::Interface::Simple;
 use IO::Socket;
 
 use Term::ANSIColor;
