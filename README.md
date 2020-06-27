@@ -17,8 +17,8 @@ Like OpenVPN, but with multiple links from Client to Server.
 git clone https://github.com/richi235/Reinhard-VPN
 
 # installing the required perl modules:
-apt install libpoe-perl build-essential libnetpacket-perl liblog-fast-perl
-cpan  POE::XS::Loop::Poll
+apt install libpoe-perl build-essential libnetpacket-perl liblog-fast-perl net-tools
+cpan POE::XS::Loop::Poll
 
 # copy the config
 cp dynIpClient.example.cfg /etc/multivpn.cfg
