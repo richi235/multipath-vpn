@@ -632,7 +632,7 @@ sub send_scheduler_afmt_fl
                 next;
             }
 
-            my $sock_hash = dccp_get_tx_infos($subtun_sockets[$i]);
+            my $sock_hash = dccp_get_tx_infos($i);
             # $srtt is in microseconds (10^-6), $delta is in seconds
             # therefore * 1_000_000 to make them comparable
             if ( $sock_hash->{srtt} + ($delta * 1_000_000) >= $last_sock_hash->{srtt} ) {
