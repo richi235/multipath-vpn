@@ -137,6 +137,7 @@ use POE
   qw(Wheel::SocketFactory XS::Loop::Poll);
 
 use Log::Fast;
+use Carp qw(longmess);
 use IO::File;
 use IO::Socket;
 
@@ -514,7 +515,7 @@ sub dccp_get_tx_infos
     my $socket_id = shift;
     my $sock = $subtun_sockets[$socket_id];
     my $dccp_info_struct = getsockopt($sock, SOL_DCCP, DCCP_SOCKOPT_CCID_TX_INFO);
-    $ALGOLOG->ERR($!) if (!defined($dccp_info_struct));
+    $ALGOLOG->ERR($! . "\n" . longmess()) if (!defined($dccp_info_struct));
     my $sock_hash;
 
     if ( $ccid_to_use == 3) {
