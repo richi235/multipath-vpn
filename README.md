@@ -18,7 +18,7 @@ git clone https://github.com/richi235/Reinhard-VPN
 
 # installing the required perl modules:
 apt install libpoe-perl build-essential libnetpacket-perl liblog-fast-perl
-cpan POE::Wheel::UDP IO::Interface::Simple POE::XS::Loop::Poll
+cpan  POE::XS::Loop::Poll
 
 # copy the config
 cp dynIpClient.example.cfg /etc/multivpn.cfg
