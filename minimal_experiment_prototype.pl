@@ -173,9 +173,11 @@ use constant TUNNEL_DEVICE => '/dev/net/tun';
 ## Constants for DCCP
 use constant SOCK_DCCP      =>  6;
 use constant IPPROTO_DCCP   => 33;
+use constant SOL_DCCP       => 269;
 use constant DCCP_SOCKOPT_CCID_TX_INFO  => 192;
 use constant DCCP_SOCKOPT_GET_CUR_MPS   => 5;
-use constant SOL_DCCP       => 269;
+use constant DCCP_SOCKOPT_CCID          => 13;
+
 use constant SIOCOUTQ       => 21521;
 
 
@@ -898,30 +900,31 @@ sub dccp_subtun_minimal_send
 }
 
 sub dccp_server_new_client {
-    my $client_socket = $_[ARG0];
+    my $listen_socket = $_[ARG0];
+    # TODO: muss noch explizit listen socket hier bekommen und weiter übergeben
 
     ## Create a new session for every new dccp subtunnel socket
     POE::Session->create(
         inline_states => {
             _start    => sub {
-                $_[HEAP]{subtun_sock} = $_[ARG0];
-                # Put this session's id in our global array
-                # And the corresponding subtun socket in a second array, at same index number
+                my $listen_sock = $_[ARG0];
+                my $client_addr = accept(my $new_con_sock, $listen_sock);
+                $_[HEAP]{subtun_sock} = $new_con_sock;
+
                 push(@subtun_sessions, $_[SESSION]->ID());
-                push(@subtun_sockets, $_[ARG0]);
+                push(@subtun_sockets, $new_con_sock);
                 $CONLOG->WARN(colored("DCCP Server: ", 'bold green')
-                       . "Succesfully accepted one subtunnel");
+                                  . "Succesfully accepted one subtunnel");
                 my $packed = getsockopt($_[HEAP]{subtun_sock}, SOL_DCCP, DCCP_SOCKOPT_GET_CUR_MPS);
                 my $max_packet_size = unpack("I", $packed);
                 say("accepted subtun max packet size: $max_packet_size");
-                # $_[HEAP]{subtun_sock}->setsockopt(SOL_SOCKET, SO_SNDBUF, 2048);
 
                 $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_data_received");
             },
             on_data_received => \&dccp_subtun_minimal_recv,
             on_data_to_send => \&dccp_subtun_minimal_send,
         },
-        args => [$client_socket],
+        args => [$listen_socket],
     );
 }
 
@@ -976,6 +979,23 @@ if ( $dccp_Texit) {
         #    Entscheidung: Es bleibt bei 12345
     inline_states => {
         _start => sub {
+            # create a socket, make it reusable
+            socket(my $listen_sock, PF_INET, SOCK_DCCP, IPPROTO_DCCP)
+                or die "Can't listening open socket $!\n";
+            setsockopt($listen_sock, SOL_DCCP, DCCP_SOCKOPT_CCID, $ccid_to_use)
+                or die "Can't set socket option to SO_REUSEADDR $!\n";
+
+            # bind to a port, then listen
+            bind( $listen_sock, pack_sockaddr_in(12345, inet_aton("0.0.0.0")))
+                or die "Can't bind to port $port! \n";
+
+            listen($listen_sock, 5) or die "listen error: $!";
+            say("Listen socket started on port $port");
+            $_[HEAP]->{listen_sock} = $listen_sock;
+
+            $kernel->select_read( $listen_sock, "on_client_accept" );
+
+
             # Start the server.
             $_[HEAP]{server} = POE::Wheel::SocketFactory->new(
                 BindPort       => 12345,
@@ -985,6 +1005,10 @@ if ( $dccp_Texit) {
                 SocketType     => SOCK_DCCP,
                 SocketProtocol => IPPROTO_DCCP,
             );
+            # TODO entscheiden: nehme ich basic socket oder IO::Socket?
+            #   - Idee: schauen was habe ich denn in meinen beispielen?
+            # TODO richtigen perl setsockopt für CCID setting raussuchen
+            # setsockopt($_[HEAP]{server}, )
         },
         on_client_accept => \&dccp_server_new_client,
         on_server_error => sub {
