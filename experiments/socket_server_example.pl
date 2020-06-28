@@ -17,7 +17,7 @@ my $server = "localhost";  # Host IP running the server
 
 # create a socket, make it reusable
 socket(my $listen_sock, PF_INET, SOCK_DCCP, IPPROTO_DCCP)
-  or die "Can't open socket $!\n";
+  or die "Can't listening open socket $!\n";
 #setsockopt($listen_sock, SOL_SOCKET, SO_REUSEADDR, 1)
 #   or die "Can't set socket option to SO_REUSEADDR $!\n";
 
