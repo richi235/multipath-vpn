@@ -202,6 +202,8 @@ my $loglevel_algo = 'WARN';
 my $loglevel_connect = 'NOTICE';
 my $sched_algo = "afmt_fl";
 
+my $help = 0;
+
 # The Log::Fast (component wise) loggers
 my $TXRXLOG;
 my $ALGOLOG;
@@ -238,11 +240,29 @@ $SIG{QUIT} = \&toggle_sched_algo;
 sub parse_cli_args
 {
     GetOptions('c|conf=s'     => \$conf_file_name,
+               'lcon=s'       => \$loglevel_connect,
                'ltx=s'        => \$loglevel_txrx,
                'lalgo=s'      => \$loglevel_algo,
                'sched=s'      => \$sched_algo,
                'ccid=i'       => \$ccid_to_use,
-               'lcon=s'       => \$loglevel_connect);
+               'h|help'       => \$help);
+
+    if ( $help ) {
+        say("This is the unofroest Multipath Tunneling prototype, for scientific testing. Science!
+It supports the following cli params:
+         'c|conf=s'     => \$conf_file_name, # /etc/multivpn.cfg is default
+         'ccid=i'       => \$ccid_to_use,
+
+         'sched=s'      => \$sched_algo, # 'rr' or 'afmt_fl' (default)
+         'h|help'       => \$help
+
+  ## Logging: (Levels: ERR | WARN | NOTICE | INFO | DEBUG)
+         'lcon=s'       => \$loglevel_connect # default: NOTICE
+         'ltx=s'        => \$loglevel_txrx, # default: WARN
+         'lalgo=s'      => \$loglevel_algo, # default: WARN ");
+
+        exit(0);
+    }
 }
 
 sub toggle_sched_algo
