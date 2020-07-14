@@ -469,7 +469,7 @@ sub select_adaptively
     my $packet_size = $_[1];
 
     my $opti_sock_id;
-    my $min_weighted_fill = 1_000_000;
+    my $min_weighted_fill = 1_000_000_000_000;
 
     if ( 0 == @applicable_subtun_hashes ) {
         $ALGOLOG->ERR("Error: select_adaptively() called with empty subtun_hashes array");
