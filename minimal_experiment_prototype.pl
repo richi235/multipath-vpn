@@ -695,6 +695,47 @@ sub send_scheduler_afmt_fl
     }
 }
 
+# SRTT min as used by multipath TCP
+# Here a "free socket" is a socket with room in its cwnd to send packets
+# 1. from all the free sockets choose the one with lowest srtt and send there
+# 2. if no sockets are free, wait
+#
+# Here we implement this the following way
+#   1. this function gets called when there is a new packet p to send (stored in $_[0])
+#   2. We check all subtun sockets for their tx_info (srtt, fill, etc.)
+#   3. We put these with 0 socket fill into an array
+#   4. We iterate through that array, picking the socket s with lowest srtt
+#   5. We use s to send p
+sub send_scheduler_srtt_min
+{
+    # we only get 1 parameter: a network packet ~1500 bytes
+    # we're not using shift but $_[0] (see below, in the $kernel->call(...))
+    # to avoid copying the full 1500 bytes
+    my $packet_size = bytes::length($_[0]);
+    my @free_sockets;
+
+    for (my $i = 0; $i < $subtun_count; $i++)
+    {
+        my $sock_hash = dccp_get_tx_infos($i);
+        if ( $sock_hash->{sock_fill} <= 0) {
+            push(@free_sockets, $sock_hash);
+        }
+    }
+
+    my $opti_sock_id;
+    my $minimal_srtt = 1_000_000_000; # in us (10^-6)
+    for my $sock_hash (@free_sockets) {
+
+        if ( $sock_hash->{srtt} < $minimal_srtt) {
+            $minimal_srtt = $sock_hash->{srtt};
+            $opti_sock_id = $sock_hash->{socket_id};
+        }
+
+    }
+
+    $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0], $packet_size );
+}
+
 sub tun_read {
     my $buf;
     while(sysread($_[HEAP]->{tun_device}, $buf , TUN_MAX_FRAME ))
