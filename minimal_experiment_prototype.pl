@@ -234,7 +234,7 @@ my %flow_table;
 
 ### Signal Handlers ###
 $SIG{INT} = sub { die "Caught a SIGINT Signal. Current Errno: $!" };
-$SIG{QUIT} = \&toggle_sched_algo;
+$SIG{QUIT} = \&toggle_sched_algo; # Strg + \ or Strg + |
 
 ####### Section 1 START: Function Definitions #############
 sub parse_cli_args
@@ -265,6 +265,7 @@ It supports the following cli params:
     }
 }
 
+# This is called on SIGQUIT (STRG+\) and toggles to the next sched algo (depending on current)
 sub toggle_sched_algo
 {
     if ( $sched_algo eq 'rr' ) {
