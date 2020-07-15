@@ -1027,6 +1027,10 @@ if ( $sched_algo eq 'afmt_fl') {
     $packet_scheduler = \&send_scheduler_afmt_fl;
 } elsif ( $sched_algo eq 'rr') {
     $packet_scheduler = \&send_scheduler_rr;
+} elsif ( $sched_algo eq 'srtt_min') {
+    $packet_scheduler = \&send_scheduler_srtt_min;
+} else {
+    die("Invoked with unknown scheduler name");
 }
 
 # DCCP listen socket session
