@@ -253,7 +253,7 @@ It supports the following cli params:
          'c|conf=s'     => \$conf_file_name, # /etc/multivpn.cfg is default
          'ccid=i'       => \$ccid_to_use,
 
-         'sched=s'      => \$sched_algo, # 'rr' or 'afmt_fl' (default)
+         'sched=s'      => \$sched_algo, # 'rr' or 'srtt_min' or 'afmt_fl' (default)
          'h|help'       => \$help
 
   ## Logging: (Levels: ERR | WARN | NOTICE | INFO | DEBUG)
@@ -278,6 +278,9 @@ sub toggle_sched_algo
         $sched_algo = 'rr';
         $packet_scheduler = \&send_scheduler_rr;
         say("SWITCHER: Switched sched algo: AFMT_FL --> RR");
+        # TODO: Hier noch switching zu den anderen algos (srtt_min und otias) einbauen
+        # evtl. mit array aller algos und einem next + cycling
+        # evtl. auch hash aus name/string und funktionspointer
     } else {
         die("WTF, should toggle sched algo but there's no sched algo I know of configured\n");
     }
