@@ -769,11 +769,14 @@ sub send_scheduler_otias
                                        / $sock_hash->{cwnd});
         my $estimated_delay = ($number_of_RTTs_to_wait + 0.5) * $sock_hash->{srtt};
 
+        $ALGOLOG->NOTICE("sock id: $i | free slots: $sendable_packet_count | not sent: $packets_not_sent"
+                         . "RTTs_to_wait: $number_of_RTTs_to_wait | estimated delay (ms): $estimated_delay");
         if ($estimated_delay < $minimal_delay) {
             $minimal_delay = $estimated_delay;
             $opti_sock_id = $i;
         }
     }
+    $ALGOLOG->NOTICE("Chosen socket: $opti_sock_id | with delay: $minimal_delay");
     $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0], $packet_size );
 }
 
