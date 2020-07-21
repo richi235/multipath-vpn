@@ -565,6 +565,7 @@ sub dccp_get_tx_infos
                            # converted to μs
             send_rate   => $cwnd,
             sock_fill   => $buffer_fill,
+            in_flight   => $pipe,
         };
     } else {
         die("dccp_get_tx_infos(): unknown ccid used\n");
@@ -715,6 +716,7 @@ sub send_scheduler_srtt_min
     my $packet_size = bytes::length($_[0]);
     my @free_sockets;
 
+    my $subtun_count = @subtun_sockets;
     for (my $i = 0; $i < $subtun_count; $i++)
     {
         my $sock_hash = dccp_get_tx_infos($i);
@@ -739,6 +741,39 @@ sub send_scheduler_srtt_min
     }
     $ALGOLOG->NOTICE("chosen socket: $opti_sock_id | with SRTT: $minimal_srtt");
 
+    $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0], $packet_size );
+}
+
+sub send_scheduler_otias
+{
+    my $subtun_count = @subtun_sockets;
+    my $packet_size = bytes::length($_[0]);
+    my $minimal_delay = 1_000_000;
+    my $opti_sock_id = -1;
+
+
+    for (my $i = 0; $i < $subtun_count; $i++)
+    {
+        my $sock_hash = dccp_get_tx_infos($i);
+        my $sendable_packet_count = $sock_hash->{cwnd} - $sock_hash->{in_flight};
+
+        # wie mache ich das hier jetzt mit #packets_not_yet_sent i.e. sock fill?
+        # umrechnen?
+        # Entscheidung: hier jetzt erstmal mit näherung rechnen also socket_fill / packet size
+        my $packets_not_sent = POSIX::ceil($sock_hash->{sock_fill} / 1400);
+        # Here we take 1400 as an average packet size and round up so 3.44 becomes 4
+        # because that's how many skbs are stored in the queue anyway
+
+        my $number_of_RTTs_to_wait =
+            POSIX::floor(  ($packets_not_sent - $sendable_packet_count)
+                                       / $sock_hash->{cwnd});
+        my $estimated_delay = ($number_of_RTTs_to_wait + 0.5) * $sock_hash->{srtt};
+
+        if ($estimated_delay < $minimal_delay) {
+            $minimal_delay = $estimated_delay;
+            $opti_sock_id = $i;
+        }
+    }
     $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0], $packet_size );
 }
 
