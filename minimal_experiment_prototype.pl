@@ -718,9 +718,13 @@ sub send_scheduler_srtt_min
     for (my $i = 0; $i < $subtun_count; $i++)
     {
         my $sock_hash = dccp_get_tx_infos($i);
-        if ( ($sock_hash->{cwnd} - $sock_hash->{pipe}) > 0) {
+        my $free_slots = $sock_hash->{cwnd} - $sock_hash->{pipe};
+
+        if ( $free_slots > 0) {
             push(@free_sockets, $sock_hash);
         }
+        $ALGOLOG->NOTICE("sock_id: $i | cwnd: $sock_hash->{cwnd} | free slots: $free_slots"
+                         . " | SRTT: $sock_hash->{srtt}");
     }
 
     my $opti_sock_id;
@@ -733,6 +737,7 @@ sub send_scheduler_srtt_min
         }
 
     }
+    $ALGOLOG->NOTICE("chosen socket: $opti_sock_id | with SRTT: $minimal_srtt");
 
     $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0], $packet_size );
 }
