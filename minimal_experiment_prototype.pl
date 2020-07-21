@@ -571,12 +571,13 @@ sub dccp_get_tx_infos
         die("dccp_get_tx_infos(): unknown ccid used\n");
     }
 
-    say(colored("send_rate/cwnd: " . ($sock_hash->{send_rate}) . " (B/s)"  #  / 64  / 1024
+    $ALGOLOG->DEBUG(
+        "send_rate/cwnd: " . ($sock_hash->{send_rate}) . " (B/s)"  #  / 64  / 1024
                     # . " | peer recv_rate:" . ($recv_rate >> 16) . "kB/s"
                     . " | SRTT: " . $sock_hash->{srtt} . "μs or ms*8"
                     . " | sock_fill: " . $sock_hash->{sock_fill}
                     # . " | ccwnd: " . (($send_rate >> 6)*($srtt/1_000_000))/1_000 . "kB"
-                    , "bold blue"));
+                );
     # I decided to not print the calculated send_rate because it was almost always 0 in my experiments
 
     return $sock_hash;
@@ -630,7 +631,7 @@ sub send_scheduler_afmt_fl
         # just returning without sending the packet is equivalent to droppning it
     }
 
-    $ALGOLOG->NOTICE("\nsend_scheduler_afmt_fl() called with $subtun_count sockets, succesfully got flow id: $flow_id");
+    $ALGOLOG->DEBUG("\nsend_scheduler_afmt_fl() called with $subtun_count sockets, succesfully got flow id: $flow_id");
 
     # say("Current flow id: $flow_id" . "\n Flow table: " . Dumper(%flow_table));
     # If packet is part of a known flow:
