@@ -718,7 +718,7 @@ sub send_scheduler_srtt_min
     for (my $i = 0; $i < $subtun_count; $i++)
     {
         my $sock_hash = dccp_get_tx_infos($i);
-        if ( $sock_hash->{sock_fill} <= 0) {
+        if ( ($sock_hash->{cwnd} - $sock_hash->{pipe}) > 0) {
             push(@free_sockets, $sock_hash);
         }
     }
