@@ -785,25 +785,86 @@ sub send_scheduler_otias
                                        / $sock_hash->{cwnd});
         my $estimated_delay = ($number_of_RTTs_to_wait + 0.5) * $sock_hash->{srtt};
 
-        $ALGOLOG->NOTICE("sock id: $i | free slots: $sendable_packet_count | not sent: $packets_not_sent"
+        $ALGOLOG->INFO("sock id: $i | free slots: $sendable_packet_count | not sent: $packets_not_sent"
                          . "RTTs_to_wait: $number_of_RTTs_to_wait | estimated delay (ms): $estimated_delay");
         if ($estimated_delay < $minimal_delay) {
             $minimal_delay = $estimated_delay;
             $opti_sock_id = $i;
         }
     }
+
+    if ( $opti_sock_id == -1) {
+        return -1;
+        $ALGOLOG->WARN("OTIAS: Warning: found no optimal path");
+    }
+
+ success:
     $ALGOLOG->NOTICE("Chosen socket: $opti_sock_id | with delay: $minimal_delay");
-    $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0], $packet_size );
+    sysread($_[HEAP]->{tun_device}, my $packet , TUN_MAX_FRAME );
+    $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $packet );
 }
 
-sub tun_read {
-    my $buf;
-    while(sysread($_[HEAP]->{tun_device}, $buf , TUN_MAX_FRAME ))
-    {
-        # $packet_scheduler is a reference to a function
-        # & dereferences it for calling see man perlref for details, same as with @$ for array references
-        &$packet_scheduler($buf);
-    }
+
+### How we handle full socket send queues
+#
+# i.e. we get new packet from packet from tun fd, but can not send it.
+# We operate on non-blocking sockets. So a full socket is technically not blocking
+# but just returning EAGAIN.
+# Ways to find out if socket is blocking: get_tx_info() and looking at
+# cwnd, pipe, und send_buffer_fill. When cwnd is full, there stack up unsent packets in
+# the send buffer (which can and are not instantly sent), that buffer is limited to 5 packets.
+#
+# Depinding on the algo:
+#
+# 1. srtt_min (busy_wait)
+# Here we do not want to build up any packet queue in the send buffer, only in the
+# queue of the tun fd. And we can look up if any socket is ready without having to dequeue
+# a packet. There we first run the algo and if it returns a good subtunnel (i.e. not -1)
+# we dequeue a packet with sysread and send it through that subtunnel.
+# When the aglo returns -1 we have the possibility of busy waiting or switching to
+# "socket based select" for now I chose busy waiting
+#
+# 2. OTIAS sock_drop
+# OTIAS actively contains to build up queues on the sockets. Therefore we first have to
+# enlarge the queue size from 5 to 10 (or 15). But what does OTIAS do when a/the send buffers
+# of the subordinate sockets are full? I couldn't find anything in the original paper on that
+# (Out-of-order Transmission for In-order Arrival Scheduling for Multipath TCP
+# , Fan Yang, Qi Wang). So I assume it just pushes it in there anyway and risks tail drop
+# and also implement it this way here. i.e. just always send on the path the algo says
+# is "ideal"
+#
+# 3. AFMT noqueue sock_drop
+# We need to take the packet out of the tun fd to do our scheduling decision. If
+# no good subtunnel to send:
+#
+# Possibility 1: Just put it in the best socket there is, accept tail droping
+#
+# Possibility 2: Keep the one packet, switch mode to "socket select". Activate aglo
+# everytime a socket triggers, first select stored packet. if again not sendable just do nothing
+# select will do busy waiting this time, trigger again and again, until it's finally sendable
+# some way. Then it will pick next paket from tun interface. If tun interface is ever empty
+# switch back to "tun select mode"
+#
+# Possibility 3: Keep packet, and do busy waiting until good socket available again
+# i.e. everytime triggerd we check if there is a "leftover packet" and process that if it
+# exists
+#
+# 4. AFMT noqueue busy_wait
+#
+# 5. AFMT_FL (old)
+#
+# For now, for easyness I go with possibilty 1
+#
+# So there are to different dimensions to the blocking problem:
+# 1. push packet in anyway or not(i.e. wait or sth else)
+# 2. busy wait or switch blocking mode (only relevant if you chose not at 1.)
+sub tun_read
+{
+    # $packet_scheduler is a reference to a function
+    # & dereferences it for calling see man perlref for details, similar to @$ for array refs
+    &$packet_scheduler();
+
+    # TODO: $packet size aus verschiedenen funktionen entfernen (weil eh egal bei dccp eig.)
 }
 
 sub get_sock_sendbuffer_fill
