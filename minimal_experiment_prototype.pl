@@ -710,13 +710,11 @@ sub send_scheduler_afmt_fl
 #   5. We use s to send p
 sub send_scheduler_srtt_min
 {
-    # we only get 1 parameter: a network packet ~1500 bytes
-    # we're not using shift but $_[0] (see below, in the $kernel->call(...))
-    # to avoid copying the full 1500 bytes
-    my $packet_size = bytes::length($_[0]);
     my @free_sockets;
-
     my $subtun_count = @subtun_sockets;
+    my $opti_sock_id = -1;
+    my $minimal_srtt = 1_000_000_000; # in us (10^-6)
+
     for (my $i = 0; $i < $subtun_count; $i++)
     {
         my $sock_hash = dccp_get_tx_infos($i);
@@ -725,33 +723,51 @@ sub send_scheduler_srtt_min
         if ( $free_slots > 0) {
             push(@free_sockets, $sock_hash);
         }
-        $ALGOLOG->NOTICE("sock_id: $i | cwnd: $sock_hash->{cwnd} | free slots: $free_slots"
+        $ALGOLOG->INFO("SRTT: sock_id: $i | cwnd: $sock_hash->{cwnd} | free slots: $free_slots"
                          . " | SRTT: $sock_hash->{srtt}");
     }
 
-    my $opti_sock_id;
-    my $minimal_srtt = 1_000_000_000; # in us (10^-6)
+    my $free_sock_count = @free_sockets;
+    $ALGOLOG->INFO("SRTT: subtun_count: $subtun_coutn | free_sockets: $free_sock_count");
+
     for my $sock_hash (@free_sockets) {
 
         if ( $sock_hash->{srtt} < $minimal_srtt) {
             $minimal_srtt = $sock_hash->{srtt};
             $opti_sock_id = $sock_hash->{socket_id};
         }
-
     }
-    $ALGOLOG->NOTICE("chosen socket: $opti_sock_id | with SRTT: $minimal_srtt");
 
-    $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0], $packet_size );
+    if ( $opti_sock == -1) { # found no opti sock
+        $ALGOLOG->NOTICE("SRTT: Found no usable socket/subtun");
+        return -1;
+    } else { # found opti sock: send packet
+        $ALGOLOG->NOTICE("SRTT: chosen socket: $opti_sock_id | with SRTT: $minimal_srtt");
+        sysread($_[HEAP]->{tun_device}, $packet , TUN_MAX_FRAME );
+        $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $packet );
+        return 1;
+    }
 }
 
 sub send_scheduler_otias
 {
     my $subtun_count = @subtun_sockets;
-    my $packet_size = bytes::length($_[0]);
     my $minimal_delay = 1_000_000;
     my $opti_sock_id = -1;
 
+    if ( $subtun_count == 0) {
+        $ALGOLOG->WARN("OTIAS: Called with 0 subtuns available");
+        return -1;
+    }
 
+    if ( $subtun_count == 1 ) {
+        $opti_sock_id = 0; # if there's only it's 0 @subtun_sockets starts from 0
+        $ALGOLOG->INFO("OTIAS: called with only 1 subtun, using it directly");
+        goto success;
+    }
+
+    # $subtun_count is >= 2
+    # main algo starts here all error cases and potential edge cases handled
     for (my $i = 0; $i < $subtun_count; $i++)
     {
         my $sock_hash = dccp_get_tx_infos($i);
