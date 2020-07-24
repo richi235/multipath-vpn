@@ -701,7 +701,13 @@ sub send_scheduler_afmt_fl
 sub get_free_sockets
 {
     my $subtun_count = @subtun_sockets;
-    my @free_sockets;
+    my @free_sockets = ();
+
+    if ( $subtun_count == 0) {
+        $ALGOLOG->WARN("get_free_sockets: called with 0 subtunnels existing");
+        return \@free_sockets;
+    }
+
     for (my $i = 0; $i < $subtun_count; $i++)
         {
             my $sock_hash = dccp_get_tx_infos($i);
