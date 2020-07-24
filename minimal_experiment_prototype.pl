@@ -1101,7 +1101,6 @@ sub dccp_subtun_minimal_recv
 sub dccp_subtun_minimal_send
 {
     my $payload = $_[ARG0];
-    my $packet_size = $_[ARG1];
 
     # If loglevel is debug: ask dccp socket for max packet size and print it
     if ( $TXRXLOG->level() eq 'DEBUG' ) {
@@ -1112,7 +1111,8 @@ sub dccp_subtun_minimal_send
 
     my $actually_sent_bytes =  $_[HEAP]->{subtun_sock}->syswrite($payload);
     $TXRXLOG->ERR("dccp_subtun_minimal_send(): socket error: errno: $!") if (!defined($actually_sent_bytes));
-#    $TXRXLOG->DEBUG("Sent payload through DCCP subtunnel $actually_sent_bytes of $packet_size bytes");
+    # my $packet_size = bytes::length($payload)
+    # $TXRXLOG->DEBUG("Sent payload through DCCP subtunnel $actually_sent_bytes of $packet_size bytes");
 }
 
 sub dccp_server_new_client {
