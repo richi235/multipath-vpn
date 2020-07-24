@@ -885,6 +885,19 @@ sub get_sock_sendbuffer_fill
     return $sock_sendbuffer_fill;
 }
 
+sub send_scheduler_afmt_noqueue_drop
+{
+    sysread($_[HEAP]->{tun_device}, my $packet , TUN_MAX_FRAME );
+    my $opti_sock_id = afmt_noqueue_base($packet);
+
+    if ( $opti_sock_id == -1 ) { # found no usable sock: drop packet
+        $ALGOLOG->NOTICE("AFMT_NOQUEUE_DROP: had to drop packet");
+        return -1;
+    } else { # found opti sock: send packet
+        $ALGOLOG->NOTICE("AFMT_NOQUEUE_DROP: sent a packet via $opti_sock_id");
+        $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $packet );
+    }
+}
 sub send_scheduler_rr
 {
     # we only get 1 parameter: a network packet ~1500 bytes
