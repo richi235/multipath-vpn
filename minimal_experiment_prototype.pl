@@ -431,7 +431,7 @@ sub get_flow_id
     my $packet_size = bytes::length($_[0]);
     $ALGOLOG->INFO("get_flow_id(): Packet size: $packet_size");
     # using $_[0] because with shift we would copy the whole packet, and that would be bad for performance
-    # This removes the 4 byte TunTap header
+    # This copies the packet and removes the 4 byte TunTap header
     my $raw_ip_packet = bytes::substr($_[0], 4);
 
     # parse the packet
@@ -443,7 +443,7 @@ sub get_flow_id
     # Check if this is an IPv4 packet at all
     # if not return an error, we can not work with this here
     if ( $ip_obj->{ver} != IP_VERSION_IPv4 ) {
-        $ALGOLOG->DEBUG("INFO: get_flow_id(): No IPv4 packet");
+        $ALGOLOG->WARN("INFO: get_flow_id(): No IPv4 packet");
         return -2;
     }
     $ALGOLOG->INFO("get_flow_id(): IP Parsing succesfull: $ip_obj->{src_ip} : $ip_obj->{dest_ip} : $ip_obj->{proto}" );
@@ -463,7 +463,7 @@ sub get_flow_id
         $dest_port = $udp_obj->{dest_port};
     } else {
         $ALGOLOG->ERR("Error: unparsable packet");
-        return;
+        return -2;
     }
 
     my $tupel_string = $ip_obj->{src_ip} . $src_port
