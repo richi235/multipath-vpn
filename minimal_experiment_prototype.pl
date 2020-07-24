@@ -1178,13 +1178,19 @@ parse_conf_file();
 evaluate_if_server();
 init_loggers();
 
-if ( $sched_algo eq 'afmt_fl') {
-    $packet_scheduler = \&send_scheduler_afmt_fl;
-} elsif ( $sched_algo eq 'rr') {
-    $packet_scheduler = \&send_scheduler_rr;
-} elsif ( $sched_algo eq 'srtt_min') {
-    $packet_scheduler = \&send_scheduler_srtt_min;
-} else {
+# All availabale send schedulers, names with their implementation functions
+my %sched_algos = (
+    'rr'                     => \&send_scheduler_rr,
+    'otias_sock_drop'        => \&send_scheduler_otias,
+    'srtt_min_busy_wait'     => \&send_scheduler_srtt_min,
+    'afmt_fl'                => \&send_scheduler_afmt_fl,
+    'afmt_noqueue_drop'      => \&send_scheduler_afmt_noqueue_drop,
+    'afmt_noqueue_busy_wait' => \&send_scheduler_afmt_noqueue_busy_wait
+);
+
+# set our scheduler from name got via cli param, die if invalid name
+$packet_scheduler = $sched_algos{$sched_algo};
+if ( !defined($packet_scheduler) ) {
     die("Invoked with unknown scheduler name");
 }
 
