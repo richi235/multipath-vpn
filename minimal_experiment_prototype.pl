@@ -898,6 +898,28 @@ sub send_scheduler_afmt_noqueue_drop
         $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $packet );
     }
 }
+
+sub send_scheduler_afmt_noqueue_busy_wait
+{
+    state $packet = -2; # -2 symbolizes empty
+    if ( $packet == -2) { # if we have no "kept unsent" packet
+        # get a new from tun interface
+        sysread($_[HEAP]->{tun_device}, my $packet , TUN_MAX_FRAME );
+    }
+
+    my $opti_sock_id = afmt_noqueue_base($packet);
+
+    if ( $opti_sock_id == -1 ) { # found no usable sock
+        $ALGOLOG->NOTICE("AFMT_NOQUEUE_busy_wait: couldn't send, return busy loop");
+        # $packet is not reset i.e. stays the same because it's a state variable
+        return -1;
+    } else {                    # found opti sock: send packet
+        $ALGOLOG->NOTICE("AFMT_NOQUEUE_busy_wait: sent a packet via $opti_sock_id");
+        $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $packet );
+        $packet = -2; # reset $packet
+        return 1;
+    }
+}
 sub send_scheduler_rr
 {
     # we only get 1 parameter: a network packet ~1500 bytes
