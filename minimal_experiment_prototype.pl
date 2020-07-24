@@ -697,6 +697,30 @@ sub send_scheduler_afmt_fl
     }
 }
 
+# returns: ref to array of the socket hashes of the free sockets
+sub get_free_sockets
+{
+    my $subtun_count = @subtun_sockets;
+    my @free_sockets;
+    for (my $i = 0; $i < $subtun_count; $i++)
+        {
+            my $sock_hash = dccp_get_tx_infos($i);
+            my $free_slots = $sock_hash->{cwnd} - $sock_hash->{pipe};
+
+            if ( $free_slots > 0) {
+                push(@free_sockets, $sock_hash);
+            }
+            $ALGOLOG->INFO("SRTT: sock_id: $i | cwnd: $sock_hash->{cwnd} | free slots: $free_slots"
+                               . " | SRTT: $sock_hash->{srtt}");
+        }
+
+    my $free_sock_count = @free_sockets;
+    $ALGOLOG->INFO("SRTT: subtun_count: $subtun_coutn | free_sockets: $free_sock_count");
+
+    return \@free_sockets;
+}
+
+
 # SRTT min as used by multipath TCP
 # Here a "free socket" is a socket with room in its cwnd to send packets
 # 1. from all the free sockets choose the one with lowest srtt and send there
@@ -710,27 +734,12 @@ sub send_scheduler_afmt_fl
 #   5. We use s to send p
 sub send_scheduler_srtt_min
 {
-    my @free_sockets;
-    my $subtun_count = @subtun_sockets;
     my $opti_sock_id = -1;
     my $minimal_srtt = 1_000_000_000; # in us (10^-6)
 
-    for (my $i = 0; $i < $subtun_count; $i++)
-    {
-        my $sock_hash = dccp_get_tx_infos($i);
-        my $free_slots = $sock_hash->{cwnd} - $sock_hash->{pipe};
+    my $free_sockets_ref = get_free_sockets();
 
-        if ( $free_slots > 0) {
-            push(@free_sockets, $sock_hash);
-        }
-        $ALGOLOG->INFO("SRTT: sock_id: $i | cwnd: $sock_hash->{cwnd} | free slots: $free_slots"
-                         . " | SRTT: $sock_hash->{srtt}");
-    }
-
-    my $free_sock_count = @free_sockets;
-    $ALGOLOG->INFO("SRTT: subtun_count: $subtun_coutn | free_sockets: $free_sock_count");
-
-    for my $sock_hash (@free_sockets) {
+    for my $sock_hash (@$free_sockets_ref) {
 
         if ( $sock_hash->{srtt} < $minimal_srtt) {
             $minimal_srtt = $sock_hash->{srtt};
