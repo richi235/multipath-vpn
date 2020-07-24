@@ -612,16 +612,17 @@ sub dccp_get_tx_infos
 sub send_scheduler_afmt_fl
 {
     my $subtun_count = @subtun_sockets;
+    sysread($_[HEAP]->{tun_device}, my $packet , TUN_MAX_FRAME );
 
     # When no subtunnels available, don't work and returning
     # Maybe we are still in warmup phase
     if ( $subtun_count == 0) {
         $ALGOLOG->WARN("send_scheduler_afmt_fl called with no subtunnels??? not sending, dropping");
-        return;
+        return -1;
     }
 
     # uses our own flow tracking system
-    my $flow_id = get_flow_id($_[0]);
+    my $flow_id = get_flow_id($packet);
 
     # flow id -2 means it was no proper IPv4 packet, print error message and return
     # We don't forward non-ipv4 traffic currently
@@ -664,7 +665,7 @@ sub send_scheduler_afmt_fl
             }
         }
 
-        my $packet_size = bytes::length($_[0]);
+        my $packet_size = bytes::length($packet);
         my $opti_sock_id = select_adaptively(\@applicable_subtun_hashes, $packet_size);
 
         # since $value_array is a ref to the array, the following
@@ -672,7 +673,7 @@ sub send_scheduler_afmt_fl
         $value_array->[0] = $opti_sock_id;
         $value_array->[1] = time();
         $ALGOLOG->NOTICE("send_scheduler_afmt_fl(): continuing existing flow $flow_id , using sock id: $opti_sock_id, packet size: $packet_size");
-        $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0], $packet_size );
+        $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $packet );
         return;
     } else { # packet starts a new flow
         # prepare the array of available subtun hashes
@@ -684,7 +685,6 @@ sub send_scheduler_afmt_fl
             push(@applicable_subtun_hashes, $sock_hash);
         }
 
-        my $packet_size = bytes::length($_[0]);
         my $opti_sock_id = select_adaptively(\@applicable_subtun_hashes, $packet_size);
 
         # we create a new value_array and put a ref to it into the %flow_table
@@ -692,8 +692,7 @@ sub send_scheduler_afmt_fl
         $flow_table{$flow_id} = $value_array;
 
         $ALGOLOG->NOTICE("send_sched_afmt(): Started new flow send through sock id: $opti_sock_id , packet size: $packet_size\n");
-        $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $_[0], $packet_size );
-
+        $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $packet );
         return;
     }
 }
