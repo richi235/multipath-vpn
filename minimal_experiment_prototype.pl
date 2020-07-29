@@ -484,7 +484,7 @@ sub get_flow_id
 }
 # takes:  1. ref to applicable subtunnels array , 2. size of the packet to send
 # returns: socket_id (int) of the chosen socket
-sub select_adaptively
+sub afmt_fl_adaptivity
 {
     my @applicable_subtun_hashes = @{$_[0]};
     my $packet_size = $_[1];
@@ -493,32 +493,26 @@ sub select_adaptively
     my $min_weighted_fill = 1_000_000_000_000;
 
     if ( 0 == @applicable_subtun_hashes ) {
-        $ALGOLOG->ERR("Error: select_adaptively() called with empty subtun_hashes array");
+        $ALGOLOG->ERR("Error: afmt_fl_adaptivity() called with empty subtun_hashes array");
         exit(-1);
     }
 
     if ( 1 == @applicable_subtun_hashes) {
         # if only one subtunnel is applicable (no overtaking/reordering produced)
         # just return that
-        $ALGOLOG->NOTICE("select_adaptively(): called with only 1 arg");
+        $ALGOLOG->NOTICE("afmt_fl_adaptivity(): called with only 1 arg");
         return $applicable_subtun_hashes[0]->{sock_id};
     }
 
     for my $subtun_hash (@applicable_subtun_hashes) {
         my $weighted_fill =
-            # Wie kriege ich jetzt hier SRTT und sock fill?
-            #  - wäs wäre am performantesten?
-            #  - habs ja vorher schonmal abgefragt für flow-awareness
-            #  - evtl. mit reinwürgen in das @applicable_subtun_hashes array
-            #    - ja why not, immernoch billiger als syscall 2 mal machen
             ( ( ($subtun_hash->{sock_fill}*$subtun_hash->{sock_fill}) + $packet_size) /
                   ($subtun_hash->{send_rate} || 1) )
             * $subtun_hash->{srtt};
 #        say(colored($weighted_fill, "bold red"));
-        $ALGOLOG->NOTICE("select_adaptively(): sock_id: $subtun_hash->{sock_id}"
+        $ALGOLOG->NOTICE("afmt_fl_adaptivity(): sock_id: $subtun_hash->{sock_id}"
                            . " | srtt:" . $subtun_hash->{srtt}/1000 . "ms"
                            . " | send_rate:" . ($subtun_hash->{send_rate}) . " (B/s)"
-#                           . " | calc send_rate:" . ($subtun_hash->{calc_rate})/1000 . "kB/s"
                            . " | sock_fill: $subtun_hash->{sock_fill} Byte"
                            . " | resulting weighted_fill: $weighted_fill");
 
@@ -614,7 +608,7 @@ sub send_scheduler_afmt_fl
     my $subtun_count = @subtun_sockets;
     sysread($_[HEAP]->{tun_device}, my $packet , TUN_MAX_FRAME );
 
-    # When no subtunnels available, don't work and returning
+    # When no subtunnels available, don't work and return
     # Maybe we are still in warmup phase
     if ( $subtun_count == 0) {
         $ALGOLOG->WARN("send_scheduler_afmt_fl called with no subtunnels??? not sending, dropping");
@@ -666,7 +660,7 @@ sub send_scheduler_afmt_fl
         }
 
         my $packet_size = bytes::length($packet);
-        my $opti_sock_id = select_adaptively(\@applicable_subtun_hashes, $packet_size);
+        my $opti_sock_id = afmt_fl_adaptivity(\@applicable_subtun_hashes, $packet_size);
 
         # since $value_array is a ref to the array, the following
         # also updates the real array in %flow_table
@@ -685,7 +679,7 @@ sub send_scheduler_afmt_fl
             push(@applicable_subtun_hashes, $sock_hash);
         }
 
-        my $opti_sock_id = select_adaptively(\@applicable_subtun_hashes, $packet_size);
+        my $opti_sock_id = afmt_fl_adaptivity(\@applicable_subtun_hashes, $packet_size);
 
         # we create a new value_array and put a ref to it into the %flow_table
         $value_array = [$opti_sock_id, time()];
@@ -709,16 +703,16 @@ sub get_free_sockets
     }
 
     for (my $i = 0; $i < $subtun_count; $i++)
-        {
-            my $sock_hash = dccp_get_tx_infos($i);
-            my $free_slots = $sock_hash->{cwnd} - $sock_hash->{pipe};
+    {
+        my $sock_hash = dccp_get_tx_infos($i);
+        my $free_slots = $sock_hash->{send_rate} - $sock_hash->{pipe};
 
-            if ( $free_slots > 0) {
-                push(@free_sockets, $sock_hash);
-            }
-            $ALGOLOG->INFO("SRTT: sock_id: $i | cwnd: $sock_hash->{cwnd} | free slots: $free_slots"
-                               . " | SRTT: $sock_hash->{srtt}");
+        if ( $free_slots > 0) {
+            push(@free_sockets, $sock_hash);
         }
+        $ALGOLOG->INFO("SRTT: sock_id: $i | cwnd: $sock_hash->{send_rate} | free slots: $free_slots"
+                            . " | SRTT: $sock_hash->{srtt}");
+    }
 
     my $free_sock_count = @free_sockets;
     $ALGOLOG->INFO("SRTT: subtun_count: $subtun_coutn | free_sockets: $free_sock_count");
@@ -786,7 +780,7 @@ sub send_scheduler_otias
     for (my $i = 0; $i < $subtun_count; $i++)
     {
         my $sock_hash = dccp_get_tx_infos($i);
-        my $sendable_packet_count = $sock_hash->{cwnd} - $sock_hash->{in_flight};
+        my $sendable_packet_count = $sock_hash->{send_rate} - $sock_hash->{in_flight};
 
         # wie mache ich das hier jetzt mit #packets_not_yet_sent i.e. sock fill?
         # umrechnen?
@@ -797,7 +791,7 @@ sub send_scheduler_otias
 
         my $number_of_RTTs_to_wait =
             POSIX::floor(  ($packets_not_sent - $sendable_packet_count)
-                                       / $sock_hash->{cwnd});
+                                       / $sock_hash->{send_rate});
         my $estimated_delay = ($number_of_RTTs_to_wait + 0.5) * $sock_hash->{srtt};
 
         $ALGOLOG->INFO("sock id: $i | free slots: $sendable_packet_count | not sent: $packets_not_sent"
@@ -905,7 +899,7 @@ sub send_scheduler_afmt_noqueue_drop
     sysread($_[HEAP]->{tun_device}, my $packet , TUN_MAX_FRAME );
     my $opti_sock_id = afmt_noqueue_base($packet);
 
-    if ( $opti_sock_id == -1 ) { # found no usable sock: drop packet
+    if ( $opti_sock_id < 0 ) { # found no usable sock: drop packet
         $ALGOLOG->NOTICE("AFMT_NOQUEUE_DROP: had to drop packet");
         return -1;
     } else { # found opti sock: send packet
@@ -924,7 +918,7 @@ sub send_scheduler_afmt_noqueue_busy_wait
 
     my $opti_sock_id = afmt_noqueue_base($packet);
 
-    if ( $opti_sock_id == -1 ) { # found no usable sock
+    if ( $opti_sock_id < 0 ) { # found no usable sock
         $ALGOLOG->NOTICE("AFMT_NOQUEUE_busy_wait: couldn't send, return busy loop");
         # $packet is not reset i.e. stays the same because it's a state variable
         return -1;
@@ -935,6 +929,124 @@ sub send_scheduler_afmt_noqueue_busy_wait
         return 1;
     }
 }
+
+#    1. erst kucken welche socks available  (loop)
+#       - also get_tx_info() callen
+#       - und available == free_slots == cwnd - in_flight > 0
+#    2. dann von denen kucken wo nicht überholen  (loop)
+#       - da evtl. code von afmt_fl kopieren, evlt. in eigene funktion packen
+#    3. dann von denen den mit most free slots nehmen (loop)
+#      - oder free_slots / srtt
+#      - hatt da iwo notitzen zu
+#
+#    und halt überall noch logging
+sub afmt_noqueue_base {
+
+    # When no subtunnels available, don't work and return
+    if ( $subtun_count == 0) {
+        $ALGOLOG->WARN("afmt_base called with no subtunnels. not sending, dropping");
+        return -1;
+    }
+
+    # 1. get available socks (comparable to srtt_min, in eigene funktion packen?)
+    my $free_sockets_ref = get_free_sockets();
+
+    if ( @$free_sockets_ref == 0) {
+        $ALGOLOG->NOTICE("afmt_noqueue_base: Aborting: no free socks")
+        return -2;
+    }
+
+    # 2. make sure anti reordering (no overtaking):
+    # uses our own flow tracking system
+    my $flow_id = get_flow_id($_[0]);
+
+    if ( $flow_id == -2) {
+        # flow id -2 means it was no proper IPv4 packet, print error message and return
+        # We don't forward non-ipv4 traffic currently
+        $ALGOLOG->WARN("WARNING: send_scheduler_afmt_noqueue_base(): payload ist no IPv4 packet, dropping it\n");
+        return -3;
+    }
+    # TODO: flow id buffern?
+    # TODO: entscheiden: get flow id vorziehen?
+
+    # If packet is part of a known flow:
+    if ( defined (my $value_array = $flow_table{$flow_id})) {
+        my $last_sock_index = $value_array->[0]; # the index to the global subtunnel and sock arrays
+
+        # the time stamp of when the last packet of this flow was send
+        my $last_send_time = $value_array->[1];
+
+        my $now = time();
+        my $delta = $now - $last_send_time; # delta in seconds (float with 10^-6 accuracy (microseconds))
+
+        my $last_sock_hash = dccp_get_tx_infos($last_sock_index); # could be taken from a cache
+
+        my @applicable_subtun_hashes;
+        for my $sock_hash (@$free_sockets_ref) {
+            # $srtt is in microseconds (10^-6), $delta is in seconds
+            # therefore * 1_000_000 to make them comparable
+            if ( $sock_hash->{srtt} + ($delta * 1_000_000) >= $last_sock_hash->{srtt} ) {
+                push(@applicable_subtun_hashes, $sock_hash);
+            }
+        }
+
+        if ( 0 == @applicable_subtun_hashes) {
+            $ALGOLOG->NOTICE("afmt_base: got >= 1 free sockets, but all would overtake, not sending");
+            return -4;
+        }
+
+        my $opti_sock_id = afmt_base_adaptivity(\@applicable_subtun_hashes);
+        # since $value_array is a ref to the array, the following
+        # also updates the real array in %flow_table
+        $value_array->[0] = $opti_sock_id;
+        $value_array->[1] = time();
+        $ALGOLOG->NOTICE("send_scheduler_afmt_fl(): continuing existing flow $flow_id , using sock id: $opti_sock_id, packet size: $packet_size");
+        return $opti_sock_id;
+
+    } else { # packet starts a new flow
+        my $opti_sock_id = afmt_base_adaptivity($free_sockets_ref);
+
+        # we create a new value_array and put a ref to it into the %flow_table
+        $value_array = [$opti_sock_id, time()];
+        $flow_table{$flow_id} = $value_array;
+
+        $ALGOLOG->NOTICE("send_sched_afmt(): Started new flow send through sock id: $opti_sock_id , packet size: $packet_size\n");
+        return $opti_sock_id;
+    }
+}
+
+sub afmt_base_adaptivity
+{
+    my $sock_hashes_ref = shift;
+    my $max_weighted_free_slots = 0;
+    my $opti_sock_id = -1;
+
+    if ( 1 == @$sock_hashes_ref) {
+        # if only one subtunnel is applicable (no overtaking/reordering produced)
+        # just return that one
+        $ALGOLOG->INFO("afmt_base_adaptivity(): only got 1 good subtun_hash as input return that");
+        return $sock_hashes_ref->[0]->{sock_id};
+    }
+
+    for $subtun_hash (@$sock_hashes_ref) {
+        my $weighted_free_slots = ($subtun_hash->{send_rate} - $subtun_hash->{in_flight})
+            / $subtun_hash->{srtt};
+
+        $ALGOLOG->NOTICE("afmt_base_adaptivity(): sock_id: $subtun_hash->{sock_id}"
+                             . " | srtt:" . $subtun_hash->{srtt} . "μs"
+                             . " | cwnd:" . ($subtun_hash->{send_rate})
+                             . " | in flight packets: $subtun_hash->{in_flight}"
+                             . " | resulting weighted_free_slots: $weighted_free_slots");
+
+        if ( $weighted_free_slots > $max_weighted_free_slots ) {
+            $max_weighted_free_slots = $weighted_free_slots;
+            $opti_sock_id = $subtun_hash->{sock_id};
+        }
+    }
+    $ALGOLOG->NOTICE("afmt_base_adaptivty: selected $opti_sock_id, with weighted_fill: $min_weighted_fill");
+    return $opti_sock_id;
+}
+
 sub send_scheduler_rr
 {
     # we only get 1 parameter: a network packet ~1500 bytes
