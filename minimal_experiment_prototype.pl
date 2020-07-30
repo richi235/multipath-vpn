@@ -631,6 +631,7 @@ sub send_scheduler_afmt_fl
     }
 
     $ALGOLOG->DEBUG("\nsend_scheduler_afmt_fl() called with $subtun_count sockets, succesfully got flow id: $flow_id");
+    my $packet_size = bytes::length($packet);
 
     # say("Current flow id: $flow_id" . "\n Flow table: " . Dumper(%flow_table));
     # If packet is part of a known flow:
@@ -663,7 +664,6 @@ sub send_scheduler_afmt_fl
             }
         }
 
-        my $packet_size = bytes::length($packet);
         my $opti_sock_id = afmt_fl_adaptivity(\@applicable_subtun_hashes, $packet_size);
 
         # since $value_array is a ref to the array, the following
@@ -719,7 +719,7 @@ sub get_free_sockets
     }
 
     my $free_sock_count = @free_sockets;
-    $ALGOLOG->INFO("SRTT: subtun_count: $subtun_coutn | free_sockets: $free_sock_count");
+    $ALGOLOG->INFO("SRTT: subtun_count: $subtun_count | free_sockets: $free_sock_count");
 
     return \@free_sockets;
 }
@@ -751,12 +751,12 @@ sub send_scheduler_srtt_min
         }
     }
 
-    if ( $opti_sock == -1) { # found no opti sock
+    if ( $opti_sock_id == -1) { # found no opti sock
         $ALGOLOG->NOTICE("SRTT: Found no usable socket/subtun");
         return -1;
     } else { # found opti sock: send packet
-        $ALGOLOG->NOTICE("SRTT: chosen socket: $opti_sock_id | with SRTT: $minimal_srtt");
-        sysread($_[HEAP]->{tun_device}, $packet , TUN_MAX_FRAME );
+        $ALGOLOG->NOTICE("SRTT_min: chosen socket: $opti_sock_id | with SRTT: $minimal_srtt");
+        sysread($_[HEAP]->{tun_device}, my $packet , TUN_MAX_FRAME );
         $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $packet );
         return 1;
     }
@@ -944,8 +944,10 @@ sub send_scheduler_afmt_noqueue_busy_wait
 #      - hatt da iwo notitzen zu
 #
 #    und halt überall noch logging
-sub afmt_noqueue_base {
+sub afmt_noqueue_base
+{
 
+    my $subtun_count = @subtun_sessions;
     # When no subtunnels available, don't work and return
     if ( $subtun_count == 0) {
         $ALGOLOG->WARN("afmt_base called with no subtunnels. not sending, dropping");
@@ -956,7 +958,7 @@ sub afmt_noqueue_base {
     my $free_sockets_ref = get_free_sockets();
 
     if ( @$free_sockets_ref == 0) {
-        $ALGOLOG->NOTICE("afmt_noqueue_base: Aborting: no free socks")
+        $ALGOLOG->NOTICE("afmt_noqueue_base: Aborting: no free socks");
         return -2;
     }
 
@@ -1004,7 +1006,7 @@ sub afmt_noqueue_base {
         # also updates the real array in %flow_table
         $value_array->[0] = $opti_sock_id;
         $value_array->[1] = time();
-        $ALGOLOG->NOTICE("send_scheduler_afmt_fl(): continuing existing flow $flow_id , using sock id: $opti_sock_id, packet size: $packet_size");
+        $ALGOLOG->NOTICE("send_scheduler_afmt_fl(): continuing existing flow $flow_id , using sock id: $opti_sock_id");
         return $opti_sock_id;
 
     } else { # packet starts a new flow
@@ -1014,7 +1016,7 @@ sub afmt_noqueue_base {
         $value_array = [$opti_sock_id, time()];
         $flow_table{$flow_id} = $value_array;
 
-        $ALGOLOG->NOTICE("send_sched_afmt(): Started new flow send through sock id: $opti_sock_id , packet size: $packet_size\n");
+        $ALGOLOG->NOTICE("send_sched_afmt(): Started new flow send through sock id: $opti_sock_id");
         return $opti_sock_id;
     }
 }
@@ -1032,7 +1034,7 @@ sub afmt_base_adaptivity
         return $sock_hashes_ref->[0]->{sock_id};
     }
 
-    for $subtun_hash (@$sock_hashes_ref) {
+    for my $subtun_hash (@$sock_hashes_ref) {
         my $weighted_free_slots = ($subtun_hash->{send_rate} - $subtun_hash->{in_flight})
             / $subtun_hash->{srtt};
 
@@ -1047,7 +1049,7 @@ sub afmt_base_adaptivity
             $opti_sock_id = $subtun_hash->{sock_id};
         }
     }
-    $ALGOLOG->NOTICE("afmt_base_adaptivty: selected $opti_sock_id, with weighted_fill: $min_weighted_fill");
+    $ALGOLOG->NOTICE("afmt_base_adaptivty: selected $opti_sock_id, with weighted free slots: $max_weighted_free_slots");
     return $opti_sock_id;
 }
 
