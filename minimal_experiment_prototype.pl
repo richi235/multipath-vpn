@@ -253,7 +253,8 @@ It supports the following cli params:
          'c|conf=s'     => \$conf_file_name, # /etc/multivpn.cfg is default
          'ccid=i'       => \$ccid_to_use,
 
-         'sched=s'      => \$sched_algo, # 'rr' or 'srtt_min' or 'afmt_fl' (default)
+         'sched=s'      => \$sched_algo, # 'rr' or 'srtt_min_busy_wait' or 'afmt_fl'(default)
+                           # or 'otias_sock_drop' or 'afmt_noqueue_(drop|busy_wait)'
          'h|help'       => \$help
 
   ## Logging: (Levels: ERR | WARN | NOTICE | INFO | DEBUG)
