@@ -709,7 +709,7 @@ sub get_free_sockets
     for (my $i = 0; $i < $subtun_count; $i++)
     {
         my $sock_hash = dccp_get_tx_infos($i);
-        my $free_slots = $sock_hash->{send_rate} - $sock_hash->{pipe};
+        my $free_slots = $sock_hash->{send_rate} - $sock_hash->{in_flight};
 
         if ( $free_slots > 0) {
             push(@free_sockets, $sock_hash);
