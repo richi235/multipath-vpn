@@ -747,7 +747,7 @@ sub send_scheduler_srtt_min
 
         if ( $sock_hash->{srtt} < $minimal_srtt) {
             $minimal_srtt = $sock_hash->{srtt};
-            $opti_sock_id = $sock_hash->{socket_id};
+            $opti_sock_id = $sock_hash->{sock_id};
         }
     }
 
