@@ -1375,7 +1375,7 @@ if ( !$dccp_Texit) {
 POE::Session->create(
     inline_states => {
         _start => \&start_tun_session,
-        got_packet_from_tun_device => \&tun_read,
+        got_packet_from_tun_device => $packet_scheduler,
         put_into_tun_device => \&tun_write,
     }
 );
