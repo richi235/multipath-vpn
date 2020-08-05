@@ -1036,7 +1036,7 @@ sub afmt_base_adaptivity
 
     for my $subtun_hash (@$sock_hashes_ref) {
         my $weighted_free_slots = ($subtun_hash->{send_rate} - $subtun_hash->{in_flight})
-            / $subtun_hash->{srtt};
+            / ($subtun_hash->{srtt} ||  10_000);
 
         $ALGOLOG->NOTICE("afmt_base_adaptivity(): sock_id: $subtun_hash->{sock_id}"
                              . " | srtt:" . $subtun_hash->{srtt} . "μs"
