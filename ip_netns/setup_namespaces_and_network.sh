@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# load dccp kernel module
+modprobe dccp_ipv4
+
 # Create the empty namespaces
 ip netns add T_exit
 ip netns add T_entry
