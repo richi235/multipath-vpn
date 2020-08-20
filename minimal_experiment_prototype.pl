@@ -480,8 +480,7 @@ sub get_flow_id
         return -2;
     }
 
-    my $tupel_string = $ip_obj->{src_ip} . $src_port
-        . $ip_obj->{dest_ip} . $dest_port;
+    my $tupel_string = "$ip_obj->{src_ip}:$src_port --> $ip_obj->{dest_ip}:$dest_port";
 
     my $flow_id;
     if (defined( $flow_id = $tupel_to_id{$tupel_string})) {
