@@ -199,6 +199,7 @@ my $ccid_to_use = 2;
 # DEBUG
 my $loglevel_txrx = 'WARN';
 my $loglevel_algo = 'WARN';
+my $loglevel_flowids = 'WARN';
 my $loglevel_connect = 'NOTICE';
 my $sched_algo = "afmt_fl";
 
@@ -208,6 +209,7 @@ my $help = 0;
 my $TXRXLOG;
 my $ALGOLOG;
 my $CONLOG;
+my $FLOWLOG;
 
 my $dccp_Texit  = 0;
 
@@ -241,6 +243,7 @@ sub parse_cli_args
 {
     GetOptions('c|conf=s'     => \$conf_file_name,
                'lcon=s'       => \$loglevel_connect,
+               'lflow=s'      => \$loglevel_flowids,
                'ltx=s'        => \$loglevel_txrx,
                'lalgo=s'      => \$loglevel_algo,
                'sched=s'      => \$sched_algo,
@@ -260,6 +263,7 @@ It supports the following cli params:
   ## Logging: (Levels: ERR | WARN | NOTICE | INFO | DEBUG)
          'lcon=s'       => \$loglevel_connect # default: NOTICE
          'ltx=s'        => \$loglevel_txrx, # default: WARN
+         'lflow=s'      => \$loglevel_flowids, # default: WARN
          'lalgo=s'      => \$loglevel_algo, # default: WARN ");
 
         exit(0);
@@ -303,6 +307,12 @@ sub init_loggers
 
     $CONLOG = Log::Fast->new({
         level           => $loglevel_algo,
+        type            => 'fh',
+        fh              => \*STDOUT,
+    });
+
+    $FLOWLOG = Log::Fast->new({
+        level           => $loglevel_flowids,
         type            => 'fh',
         fh              => \*STDOUT,
     });
@@ -433,7 +443,7 @@ sub get_flow_id
 {
 
     my $packet_size = bytes::length($_[0]);
-    $ALGOLOG->INFO("get_flow_id(): Packet size: $packet_size");
+    $FLOWLOG->INFO("get_flow_id(): Packet size: $packet_size");
     # using $_[0] because with shift we would copy the whole packet, and that would be bad for performance
     # This copies the packet and removes the 4 byte TunTap header
     my $raw_ip_packet = bytes::substr($_[0], 4);
@@ -441,32 +451,32 @@ sub get_flow_id
     # parse the packet
     my $ip_obj = NetPacket::IP->decode($raw_ip_packet);
 
-    $ALGOLOG->DEBUG(Dumper($ip_obj));
-    $ALGOLOG->DEBUG(IP_VERSION_IPv4); #dump the constant
+    $FLOWLOG->DEBUG(Dumper($ip_obj));
+    $FLOWLOG->DEBUG(IP_VERSION_IPv4); #dump the constant
 
     # Check if this is an IPv4 packet at all
     # if not return an error, we can not work with this here
     if ( $ip_obj->{ver} != IP_VERSION_IPv4 ) {
-        $ALGOLOG->WARN("INFO: get_flow_id(): No IPv4 packet");
+        $FLOWLOG->WARN("INFO: get_flow_id(): No IPv4 packet");
         return -2;
     }
-    $ALGOLOG->INFO("get_flow_id(): IP Parsing succesfull: $ip_obj->{src_ip} : $ip_obj->{dest_ip} : $ip_obj->{proto}" );
+    $FLOWLOG->INFO("get_flow_id(): IP Parsing succesfull: $ip_obj->{src_ip} : $ip_obj->{dest_ip} : $ip_obj->{proto}" );
 
     my ($src_port, $dest_port);
 
     if ( $ip_obj->{proto} == IP_PROTO_TCP ) {
         my $tcp_obj = NetPacket::TCP->decode($ip_obj->{data});
-        $ALGOLOG->INFO("$tcp_obj->{src_port} : $tcp_obj->{dest_port}");
+        $FLOWLOG->INFO("$tcp_obj->{src_port} : $tcp_obj->{dest_port}");
         $src_port  = $tcp_obj->{src_port};
         $dest_port = $tcp_obj->{dest_port};
     } elsif ($ip_obj->{proto} == IP_PROTO_UDP)
     {
         my $udp_obj = NetPacket::UDP->decode($ip_obj->{data});
-        $ALGOLOG->INFO("$udp_obj->{dest_port} : $udp_obj->{src_port}");
+        $FLOWLOG->INFO("$udp_obj->{dest_port} : $udp_obj->{src_port}");
         $src_port  = $udp_obj->{src_port};
         $dest_port = $udp_obj->{dest_port};
     } else {
-        $ALGOLOG->ERR("Error: unparsable packet");
+        $FLOWLOG->ERR("Error: unparsable packet");
         return -2;
     }
 
@@ -476,13 +486,13 @@ sub get_flow_id
     my $flow_id;
     if (defined( $flow_id = $tupel_to_id{$tupel_string})) {
         # yas, we know that flow, return its id
-        $ALGOLOG->INFO("Found Flow id: $flow_id for $tupel_string");
+        $FLOWLOG->INFO("Found Flow id: $flow_id for $tupel_string");
         return $flow_id;
     } else {
         # create a new entry, return newly assigned id
         $max_flow_id++;
         $tupel_to_id{$tupel_string} = $max_flow_id;
-        $ALGOLOG->INFO("Created new Flow id: $max_flow_id for $tupel_string");
+        $FLOWLOG->INFO("Created new Flow id: $max_flow_id for $tupel_string");
         return $max_flow_id;
     }
 }
