@@ -4,7 +4,7 @@
 
 runtime=10
 sched_algo=afmt_noqueue_drop
-udp_flag="-u"
+udp_flag="-u -l 1392"
 bandwith_opt="-b2m"
 flowcount=1
 run=r1
