@@ -18,7 +18,7 @@ timeout $((runtime+7)) ../minimal_experiment_prototype.pl -c ../ip_netns/T_exit.
               --sched=$sched_algo --ccid=2 > $results_dir/texit_logs  &
 sleep 1
 
-timeout $((runtime+5)) tcpdump -i tun0 -w afmt_tun0_trace.pcap "dst 192.168.65.2" & 
+timeout $((runtime+5)) tcpdump -i tun0 -w afmt_tun0_trace.pcap "dst 192.168.65.2" &
 timeout $((runtime+4)) iperf $udp_flag  -s -i 0.1 --reportstyle C > iperf_server_output.csv &
 
 ip netns exec T_entry timeout $((runtime+4)) ../minimal_experiment_prototype.pl \
@@ -30,7 +30,7 @@ ip netns exec T_entry iperf $udp_flag  -t $runtime $bandwith_opt  \
 
 sleep $((runtime+3))
 
-## ----- here we block for 12 seconds, after that 
+## ----- here we block for 12 seconds, after that
 ## ----- generatiing graphs starts:
 
 cut -d, -f 9 iperf_server_output.csv > server_bps
