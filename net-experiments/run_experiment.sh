@@ -4,13 +4,14 @@
 
 runtime=10
 sched_algo=afmt_noqueue_drop
-udp_flag="-u -l 1392"
-bandwith_opt="-b2m"
+udp_flag="-u"
+bandwith_opt="-b20m"
 flowcount=1
-run=r1
+run=r5
 results_dir="${runtime}s_${sched_algo}_${udp_flag}_${flowcount}flows_${bandwith_opt}_$run"   # the dir the results will be stored in
 echo $results_dir
 mkdir $results_dir
+udp_flag=${udp_flag}" -l 1392" # added after mkdir because spaces are hard + unneeded info in dir name
 
 
 # Dev note: Maybe use:  timeout 10 (timeout is a own program, seconds is default type)
