@@ -190,6 +190,7 @@ $| = 1;                    # disable terminal output buffering
 my $config   = {};
 my $conf_file_name = "/etc/multivpn.cfg";
 my $ccid_to_use = 2;
+my $start_time;
 
 # ## Log::Fast Loglevels ## One out of:
 # ERR
@@ -201,6 +202,8 @@ my $loglevel_txrx = 'WARN';
 my $loglevel_algo = 'WARN';
 my $loglevel_flowids = 'WARN';
 my $loglevel_connect = 'NOTICE';
+my $loglevel_scilog  = 'NOTICE';
+
 my $sched_algo = "afmt_fl";
 
 my $help = 0;
@@ -210,6 +213,7 @@ my $TXRXLOG;
 my $ALGOLOG;
 my $CONLOG;
 my $FLOWLOG;
+my $SCILOG;
 
 my $dccp_Texit  = 0;
 
@@ -245,6 +249,7 @@ sub parse_cli_args
                'lcon=s'       => \$loglevel_connect,
                'lflow=s'      => \$loglevel_flowids,
                'ltx=s'        => \$loglevel_txrx,
+               'lsci=s'       => \$loglevel_scilog,
                'lalgo=s'      => \$loglevel_algo,
                'sched=s'      => \$sched_algo,
                'ccid=i'       => \$ccid_to_use,
@@ -264,6 +269,7 @@ It supports the following cli params:
          'lcon=s'       => \$loglevel_connect # default: NOTICE
          'ltx=s'        => \$loglevel_txrx, # default: WARN
          'lflow=s'      => \$loglevel_flowids, # default: WARN
+         'lsci=s'       => \$loglevel_scilog,  # default: NOTICE
          'lalgo=s'      => \$loglevel_algo, # default: WARN ");
 
         exit(0);
@@ -293,6 +299,9 @@ sub toggle_sched_algo
 
 sub init_loggers
 {
+    open(my $scilog_file_fd, ">", "time_inflight_cwnd_srtt.tsv")
+        or croak("failed to open logfile for scilog");
+
     $TXRXLOG = Log::Fast->new({
         level           => $loglevel_txrx,
         type            => 'fh',
@@ -315,6 +324,12 @@ sub init_loggers
         level           => $loglevel_flowids,
         type            => 'fh',
         fh              => \*STDOUT,
+    });
+
+    $SCILOG = Log::Fast->new({
+        level           => $loglevel_scilog,
+        type            => 'fh',
+        fh              => \*$scilog_file_fd,
     });
 }
 
@@ -585,6 +600,8 @@ sub dccp_get_tx_infos
                     . " | sock_fill: " . $sock_hash->{sock_fill}
                     # . " | ccwnd: " . (($send_rate >> 6)*($srtt/1_000_000))/1_000 . "kB"
                 );
+    my $rel_time = time() - $start_time;
+    $SCILOG->NOTICE("$rel_time    $sock_hash->{sock_id}    $sock_hash->{in_flight}    $sock_hash->{send_rate}    $sock_hash->{srtt}");
     # I decided to not print the calculated send_rate because it was almost always 0 in my experiments
 
     return $sock_hash;
@@ -1390,5 +1407,6 @@ POE::Session->create(
 );
 
 set_via_tunnel_routes(1);
+$start_time = time();
 
 $poe_kernel->run();
