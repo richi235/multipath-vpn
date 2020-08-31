@@ -1,5 +1,5 @@
 set terminal pdf size 5,5
-set output "all_subtuns_cwnd.pdf"
+set output "all_subtuns_time_inflight_cwnd.pdf"
 # set xlabel "Seconds"
 set ylabel "Packets"
 

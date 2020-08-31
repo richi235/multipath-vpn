@@ -3,11 +3,11 @@
 # (packet delay variation and throughput). This is the server side (T_exit)
 
 runtime=10
-sched_algo=afmt_noqueue_drop
+sched_algo=srtt_min_busy_wait
 udp_flag="-u"
 bandwith_opt="-b20m"
 flowcount=1
-run=r5
+run=r1
 results_dir="${runtime}s_${sched_algo}_${udp_flag}_${flowcount}flows_${bandwith_opt}_$run"   # the dir the results will be stored in
 echo $results_dir
 mkdir $results_dir
@@ -38,9 +38,11 @@ sleep $((runtime+3))
 cut -d, -f 9 iperf_server_output.csv > server_bps
 
 ./get_delay_variations.py afmt_tun0_trace.pcap > delay_variations
+./demux_subtun_records.pl time_inflight_cwnd_srtt.tsv
 
-
+gnuplot all_subtuns_time_inflight_cwnd.plt
 gnuplot packet_delay_variation_plot.plt
 gnuplot throughput.plt
 # rm afmt_tun0_trace.pcap
-mv tentry_logs iperf_server_output.csv iperf_tentry.log  delay_variations server_bps afmt_pdv.pdf Throughput.pdf $results_dir
+rm *.tsv
+mv all_subtuns_time_inflight_cwnd.pdf tentry_logs iperf_server_output.csv iperf_tentry.log  delay_variations server_bps afmt_pdv.pdf Throughput.pdf $results_dir
