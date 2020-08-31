@@ -8,16 +8,16 @@ set ylabel "Packets"
 set multiplot layout 3,1
 
 #set title "Subtun 0"
-plot "subtun0_time_inflight_cwnd_srtt.tsv" using 1:3 with lines title "packets in flight", \
-"subtun0_time_inflight_cwnd_srtt.tsv" using 1:4 with lines title "cwnd"
+plot "subtun0_time_inflight_cwnd_srtt.tsv" using 1:4 with lines title "cwnd", \
+     "subtun0_time_inflight_cwnd_srtt.tsv" using 1:3 with lines title "packets in flight", \
 
 #set title "Subtun 1"
-plot "subtun1_time_inflight_cwnd_srtt.tsv" using 1:3 with lines title "packets in flight", \
-"subtun1_time_inflight_cwnd_srtt.tsv" using 1:4 with lines title "cwnd"
+plot "subtun1_time_inflight_cwnd_srtt.tsv" using 1:4 with lines title "cwnd", \
+     "subtun1_time_inflight_cwnd_srtt.tsv" using 1:3 with lines title "packets in flight"
 
 #set title "Subtun 2"
-plot "subtun2_time_inflight_cwnd_srtt.tsv" using 1:3 with lines title "packets in flight", \
-"subtun2_time_inflight_cwnd_srtt.tsv" using 1:4 with lines title "cwnd"
+plot "subtun2_time_inflight_cwnd_srtt.tsv" using 1:4 with lines title "cwnd", \
+     "subtun2_time_inflight_cwnd_srtt.tsv" using 1:3 with lines title "packets in flight"
 
 unset multiplot
 
