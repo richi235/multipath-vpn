@@ -943,7 +943,7 @@ sub send_scheduler_afmt_noqueue_busy_wait
     state $packet = -2; # -2 symbolizes empty
     if ( $packet == -2) { # if we have no "kept unsent" packet
         # get a new from tun interface
-        sysread($_[HEAP]->{tun_device}, my $packet , TUN_MAX_FRAME );
+        sysread($_[HEAP]->{tun_device}, $packet , TUN_MAX_FRAME );
     }
 
     my $opti_sock_id = afmt_noqueue_base($packet);
