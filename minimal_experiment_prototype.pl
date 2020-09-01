@@ -952,7 +952,11 @@ sub send_scheduler_afmt_noqueue_busy_wait
 
     my $opti_sock_id = afmt_noqueue_base($packet);
 
-    if ( $opti_sock_id < 0 ) { # found no usable sock
+    if ($opti_sock_id == -3) {
+        # $packet was no proper IPv4 packet
+        $packet = -2; # reset $packet
+        return 1; # positive because technically one packet was succesfully processed
+    } elsif ( $opti_sock_id < 0 ) { # found no usable sock
         $ALGOLOG->NOTICE("AFMT_NOQUEUE_busy_wait: couldn't send, return busy loop");
         # $packet is not reset i.e. stays the same because it's a state variable
         return -1;
