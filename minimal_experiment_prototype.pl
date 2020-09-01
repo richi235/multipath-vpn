@@ -145,6 +145,7 @@ use Term::ANSIColor;
 use Data::Dumper;
 use Getopt::Long;
 use Time::HiRes qw(time tv_interval);
+use Scalar::Util qw(looks_like_number);
 
 use NetPacket::IP qw(:protos :versions);
 use NetPacket::TCP;
@@ -941,10 +942,13 @@ sub send_scheduler_afmt_noqueue_drop
 sub send_scheduler_afmt_noqueue_busy_wait
 {
     state $packet = -2; # -2 symbolizes empty
-    if ( $packet == -2) { # if we have no "kept unsent" packet
+    if ( looks_like_number($packet)
+         && $packet == -2) { # if we have no "kept unsent" packet
         # get a new from tun interface
         sysread($_[HEAP]->{tun_device}, $packet , TUN_MAX_FRAME );
     }
+    # looks_like_number() is actually the most performant way to check this
+    # because it asks internally tnhe perl interpreter, although its name  does not sound like it^^
 
     my $opti_sock_id = afmt_noqueue_base($packet);
 
