@@ -264,6 +264,7 @@ It supports the following cli params:
 
          'sched=s'      => \$sched_algo, # 'rr' or 'srtt_min_busy_wait' or 'afmt_fl'(default)
                            # or 'otias_sock_drop' or 'afmt_noqueue_(drop|busy_wait)'
+                           # or 'llfmt_noqueue_busy_wait'
          'h|help'       => \$help
 
   ## Logging: (Levels: ERR | WARN | NOTICE | INFO | DEBUG)
@@ -968,6 +969,35 @@ sub send_scheduler_afmt_noqueue_busy_wait
     }
 }
 
+sub send_scheduler_llfmt_noqueue_busy_wait
+{
+    state $packet = -2; # -2 symbolizes empty
+    if ( looks_like_number($packet)
+         && $packet == -2) { # if we have no "kept unsent" packet
+        # get a new from tun interface
+        sysread($_[HEAP]->{tun_device}, $packet , TUN_MAX_FRAME );
+    }
+    # looks_like_number() is actually the most performant way to check this
+    # because it asks internally tnhe perl interpreter, although its name  does not sound like it^^
+
+    my $opti_sock_id = afmt_noqueue_base($packet, \&afmt_base_adaptivity);
+
+    if ($opti_sock_id == -3) {
+        # $packet was no proper IPv4 packet
+        $packet = -2; # reset $packet
+        return 1; # positive because technically one packet was succesfully processed
+    } elsif ( $opti_sock_id < 0 ) { # found no usable sock
+        $ALGOLOG->NOTICE("AFMT_NOQUEUE_busy_wait: couldn't send, return busy loop");
+        # $packet is not reset i.e. stays the same because it's a state variable
+        return -1;
+    } else {                    # found opti sock: send packet
+        $ALGOLOG->NOTICE("AFMT_NOQUEUE_busy_wait: sent a packet via $opti_sock_id");
+        $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $packet );
+        $packet = -2; # reset $packet
+        return 1;
+    }
+}
+
 #    1. erst kucken welche socks available  (loop)
 #       - also get_tx_info() callen
 #       - und available == free_slots == cwnd - in_flight > 0
@@ -1352,7 +1382,8 @@ my %sched_algos = (
     'srtt_min_busy_wait'     => \&send_scheduler_srtt_min,
     'afmt_fl'                => \&send_scheduler_afmt_fl,
     'afmt_noqueue_drop'      => \&send_scheduler_afmt_noqueue_drop,
-    'afmt_noqueue_busy_wait' => \&send_scheduler_afmt_noqueue_busy_wait
+    'afmt_noqueue_busy_wait' => \&send_scheduler_afmt_noqueue_busy_wait,
+    'llfmt_noqueue_busy_wait'=> \&send_scheduler_llfmt_noqueue_busy_wait
 );
 
 # set our scheduler from name got via cli param, die if invalid name
