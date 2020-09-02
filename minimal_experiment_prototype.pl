@@ -928,7 +928,7 @@ sub get_sock_sendbuffer_fill
 sub send_scheduler_afmt_noqueue_drop
 {
     sysread($_[HEAP]->{tun_device}, my $packet , TUN_MAX_FRAME );
-    my $opti_sock_id = afmt_noqueue_base($packet);
+    my $opti_sock_id = afmt_noqueue_base($packet, \&afmt_base_adaptivity);
 
     if ( $opti_sock_id < 0 ) { # found no usable sock: drop packet
         $ALGOLOG->NOTICE("AFMT_NOQUEUE_DROP: had to drop packet");
@@ -950,7 +950,7 @@ sub send_scheduler_afmt_noqueue_busy_wait
     # looks_like_number() is actually the most performant way to check this
     # because it asks internally tnhe perl interpreter, although its name  does not sound like it^^
 
-    my $opti_sock_id = afmt_noqueue_base($packet);
+    my $opti_sock_id = afmt_noqueue_base($packet, \&afmt_base_adaptivity);
 
     if ($opti_sock_id == -3) {
         # $packet was no proper IPv4 packet
@@ -980,7 +980,7 @@ sub send_scheduler_afmt_noqueue_busy_wait
 #    und halt überall noch logging
 sub afmt_noqueue_base
 {
-
+    my $adaptivity_function = $_[1];
     my $subtun_count = @subtun_sessions;
     # When no subtunnels available, don't work and return
     if ( $subtun_count == 0) {
@@ -1035,7 +1035,7 @@ sub afmt_noqueue_base
             return -4;
         }
 
-        my $opti_sock_id = afmt_base_adaptivity(\@applicable_subtun_hashes);
+        my $opti_sock_id = &{$adaptivity_function}(\@applicable_subtun_hashes);
         # since $value_array is a ref to the array, the following
         # also updates the real array in %flow_table
         $value_array->[0] = $opti_sock_id;
@@ -1044,7 +1044,7 @@ sub afmt_noqueue_base
         return $opti_sock_id;
 
     } else { # packet starts a new flow
-        my $opti_sock_id = afmt_base_adaptivity($free_sockets_ref);
+        my $opti_sock_id = &{$adaptivity_function}($free_sockets_ref);
 
         # we create a new value_array and put a ref to it into the %flow_table
         $value_array = [$opti_sock_id, time()];
