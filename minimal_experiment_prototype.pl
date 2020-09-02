@@ -980,7 +980,7 @@ sub send_scheduler_llfmt_noqueue_busy_wait
     # looks_like_number() is actually the most performant way to check this
     # because it asks internally tnhe perl interpreter, although its name  does not sound like it^^
 
-    my $opti_sock_id = afmt_noqueue_base($packet, \&afmt_base_adaptivity);
+    my $opti_sock_id = afmt_noqueue_base($packet, \&llfmt_ll_selector);
 
     if ($opti_sock_id == -3) {
         # $packet was no proper IPv4 packet
@@ -1083,6 +1083,37 @@ sub afmt_noqueue_base
         $ALGOLOG->NOTICE("send_sched_afmt(): Started new flow send through sock id: $opti_sock_id");
         return $opti_sock_id;
     }
+}
+
+# selects the path with lowest srtt, it's that simple
+# pre conditions we can be sure of: @$sock_hashes_ref is not empty
+sub llfmt_ll_selector
+{
+    my $sock_hashes_ref = shift;
+    my $minimal_srtt = 1_000_000_000; # in us (10^-6)
+    my $opti_sock_id = -1;
+
+    if ( 1 == @$sock_hashes_ref) {
+        # if only one subtunnel is applicable (no overtaking/reordering produced)
+        # just return that one
+        $ALGOLOG->INFO("llfmt_ll_selector(): only got 1 good subtun_hash as input return that");
+        return $sock_hashes_ref->[0]->{sock_id};
+    }
+
+    for my $sock_hash (@$sock_hashes_ref) {
+        if ( $sock_hash->{srtt} < $minimal_srtt) {
+            $minimal_srtt = $sock_hash->{srtt};
+            $opti_sock_id = $sock_hash->{sock_id};
+        }
+    }
+
+    if ( $opti_sock_id == -1) { # found no opti sock
+        $ALGOLOG->WARN("llfmt_ll_selector: Found no usable socket/subtun");
+        return -1;
+    }
+
+    $ALGOLOG->INFO("llfmt_ll_selector: selected $opti_sock_id, with srtt: $minimal_srtt");
+    return $opti_sock_id;
 }
 
 sub afmt_base_adaptivity
