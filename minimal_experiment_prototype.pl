@@ -1302,7 +1302,7 @@ sub setup_dccp_client
                 . "Succesfully connected one subtunnel");
             # say(Dumper($_[HEAP]{subtun_sock}));
         },
-        on_input        => \&dccp_subtun_minimal_recv,
+        on_input        => \&dccp_subtun_recv,
         on_data_to_send => \&dccp_subtun_minimal_send,
         on_connection_error => sub {
             my ($operation, $errnum, $errstr) = @_[ARG0, ARG1, ARG2];
@@ -1316,7 +1316,7 @@ sub setup_dccp_client
 }
 
 
-sub dccp_subtun_minimal_recv
+sub dccp_subtun_recv
 {
     my $curinput = undef;
 
@@ -1364,7 +1364,7 @@ sub dccp_server_new_client {
 
                 $poe_kernel->select_read($_[HEAP]{subtun_sock}, "on_data_received");
             },
-            on_data_received => \&dccp_subtun_minimal_recv,
+            on_data_received => \&dccp_subtun_recv,
             on_data_to_send => \&dccp_subtun_minimal_send,
         },
         args => [$client_socket],
