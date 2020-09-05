@@ -1160,26 +1160,12 @@ sub send_scheduler_rr
     # State is same as static for local variables in C
     # Value of variables is persistent between function calls, because stored on the heap
     state $current_subtun_id = 0;
-    my $cur_subtun = $subtun_sockets[$current_subtun_id];
     my $subtun_count = @subtun_sessions;
 
     if ( $subtun_count == 0) {
         say("  send_scheduler_rr called with no subtunnels???");
         return;
     }
-
-    # if ( $loglevel_algo eq 'INFO'
-    #      || $loglevel_algo eq 'DEBUG')
-    # {
-    #     my ($send_rate, $calc_rate, $srtt, $sock_sendbuffer_fill) =
-    #         dccp_get_tx_infos($cur_subtun);
-
-    #     $ALGOLOG->INFO("Just scheduled 1 payload package through subtunnel $current_subtun_id , got $subtun_count subtunnels\n" .
-    #         "Packet size:          " . bytes::length($_[0]) . "\n" .
-    #         "Send rate:            " . $send_rate . "\n" .
-    #         "Sock sendbuffer fill: " . $sock_sendbuffer_fill . "\n" .
-    #         "SRTT:                 " . $srtt);
-    # }
 
     $poe_kernel->call( $subtun_sessions[$current_subtun_id], "on_data_to_send", $_[0] );
 
