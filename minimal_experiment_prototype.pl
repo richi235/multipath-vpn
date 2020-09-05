@@ -204,6 +204,7 @@ my $loglevel_algo = 'WARN';
 my $loglevel_flowids = 'WARN';
 my $loglevel_connect = 'NOTICE';
 my $loglevel_scilog  = 'NOTICE';
+my $own_header = 0;
 
 my $sched_algo = "afmt_fl";
 
@@ -254,7 +255,8 @@ sub parse_cli_args
                'lalgo=s'      => \$loglevel_algo,
                'sched=s'      => \$sched_algo,
                'ccid=i'       => \$ccid_to_use,
-               'h|help'       => \$help);
+               'h|help'       => \$help
+               'own_header'   => \$own_header);
 
     if ( $help ) {
         say("This is the unofroest Multipath Tunneling prototype, for scientific testing. Science!
@@ -266,6 +268,7 @@ It supports the following cli params:
                            # or 'otias_sock_drop' or 'afmt_noqueue_(drop|busy_wait)'
                            # or 'llfmt_noqueue_busy_wait'
          'h|help'       => \$help
+         'own_header'   => \$own_header
 
   ## Logging: (Levels: ERR | WARN | NOTICE | INFO | DEBUG)
          'lcon=s'       => \$loglevel_connect # default: NOTICE
@@ -1315,13 +1318,52 @@ sub setup_dccp_client
 
 }
 
-
+# Packet (received from subtun) hexdump layout:
+# Our Header | 4 byte TunTap Hearder |  Payload IP Header | Payload TCP/UDP Header
 sub dccp_subtun_recv
 {
     my $curinput = undef;
 
     my $bytes_read = $_[HEAP]{subtun_sock}->sysread($curinput, 1600);
     $TXRXLOG->DEBUG("Recieved one DCCP packet. $bytes_read bytes");
+
+    # if we're configured to use a tunnelling header
+    if ( $own_header ) {
+        # check the first byte (our header)
+        # 0xa ==> probe request ==> send probe response
+        # 0xb ==> probe response  ==> all fine, drop
+        # 0x0 ==> data  ==> put into tap device
+
+        # Sending a probe response is technically not necesary. (Our goal is to keep
+        # the DCCP stats of the socket up to date, since DCCP automatically sends an ACK,
+        # this happens anyway). But since the DCCP Ack could be a delayed ACK with this
+        # we speed up and streamline the process.
+
+        # This gets the first byte of $curinput and deletes it, in one call, quite cool
+        my $header = bytes::substr($curinput, 0, 1, "");
+
+        if ( $header == 0xa) { # probe request
+            # send probe response
+            my $probe_response = 0xb;
+            # XXX: Maybe this gives an encoding issue and we have to use
+            # pack()/ unpack() here and above for the header bytes
+
+            $poe_kernel->call( $_[SESSION], "on_data_to_send", $probe_response );
+
+            # no further payload processing, just return
+            return 1;
+        } elsif ( $header == 0xb) { # probe response
+            return 2;
+            # procssing done, only a probe response
+            # do not put into tun device
+        } elsif ( $header == 0x0) { # payload packet
+            # nothing to do here, just continue payload processing
+            # header is already striped from packet
+        } else {
+            $TXRXLOG->WARN("Got packet with broken header");
+            die();
+        }
+    }
 
     $_[KERNEL]->call($tuntap_session => "put_into_tun_device", $curinput);
 }
