@@ -181,7 +181,6 @@ use constant SIOCOUTQ       => 21521;
 
 
 # Global Variables
-my $sessions   = {};
 my $tuntap_session = undef;
 my @subtun_sessions = ();
 my @subtun_sockets  = ();
