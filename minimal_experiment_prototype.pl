@@ -1494,7 +1494,7 @@ if ( !$dccp_Texit) {
 # directly "here" before kernel->run() )
 # when handling the   **start** event   :
 ## doing a lot of stuff with ifconfig and iptables
-## possibly setting an interface and corresponding rules
+## setting an interface and corresponding rules
 POE::Session->create(
     inline_states => {
         _start => \&start_tun_session,
