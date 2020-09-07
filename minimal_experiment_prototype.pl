@@ -182,12 +182,13 @@ use constant SIOCOUTQ       => 21521;
 
 # Global Variables
 my $tuntap_session = undef;
-my @subtun_sessions = ();
-my @subtun_sockets  = ();
-my $packet_scheduler;
+my @subtun_sessions = ();  # contains session IDs
+my @subtun_sockets  = ();  # contains socket file handles
+my @recently_used = ()     # true if used in th last 100ms used for keepalives, indexed by sock_ids
+my $packet_scheduler;      # contains a function
 
 $| = 1;                    # disable terminal output buffering
-my $config   = {};
+my $config   = {};   # complex hash, filled by conf reader
 my $conf_file_name = "/etc/multivpn.cfg";
 my $ccid_to_use = 2;
 my $start_time;
@@ -235,8 +236,6 @@ my $max_flow_id = 0;
 #   hash : flow id --> array ref of last_subtunnel, timestamp
 # will be using for now
 my %flow_table;
-
-
 
 
 ### Signal Handlers ###
