@@ -1502,6 +1502,70 @@ POE::Session->create(
     }
 );
 
+## DONE keepalive sender(r session) implementiernen
+# - eigene session nehmen?
+#   - welche existierende könnte ich nehmen
+#   - ist ja vermutlich alles außerhalb von existierender
+#   - ner subtun session anhängen ist blöd
+#   - tuntab session würde gehen aber wär hässlich
+#   - eigene ist eignetlich am schönsten
+# - wie heißt die session dann was macht die?
+#   - alle 100ms die eine funktion callen
+#   - thats it
+#   - oh und die könnte das recently_used array als variable haben
+#     - ja das wär cool
+# - was macht die funktion?
+#   - über array iterieren und jedes mal
+#     - kucken ob recently used
+#       - wenn nicht:
+#         - was senden
+#         - auf 0 lassen
+#       - wenn schon
+#         - nichts tun
+#         - recently used auf 0
+# - was muss sende funktion machen?
+#   - recently used auf 1
+
+# TODO recently_used variable setzen wenn man wirklich sendet sinnvoll
+#   - ist ja globale var (muss global sein damit andere sessions sie accessen können)
+#   - und accessen wir hier:
+
+# TODO: send_probe_response nimmer über simple_send() machen
+
+# TODO: Payload übeall mit 0x0 preceden
+#    - in der simple_send() machen
+#    - muss dafür probe_response sending manuel ohne die simple_send() machen
+# Keepalive session
+# Arranges sending keep alive packets every 50ms
+# on subtunnels that are unused, to keep underlying proto stats up to date
+POE::Session->create(
+    inline_states => {
+        _start => sub {
+            # runs once at start
+            # should initialize all data structures
+            # and schedule the next "uphold_subtunnels" in 50 ms
+        },
+        uphold_subtunnels => sub {
+            # Does the following:
+            # * iterate over array and check if true
+            #    - if yes call send_keepalive()
+            # * schedule itself again in 50ms
+            my $subtun_count = @subtun_sockets;
+
+            for (my $i=0; $i < $subtun_count; $i++ ) {
+
+                my $sock_id_used = $recently_used[$i];
+                if ( $sock_id_used ) {
+                    $poe_kernel->call( $subtun_sessions[$i] , "send_keepalive");
+                }
+
+                $recently_used[$i] = 0;
+            }
+            $poe_kernel->delay( uphold_subtunnels => 0.05 );
+        },
+    }
+);
+
 set_via_tunnel_routes(1);
 $start_time = time();
 
