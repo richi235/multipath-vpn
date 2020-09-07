@@ -1291,6 +1291,7 @@ sub setup_dccp_client
         },
         on_input        => \&dccp_subtun_recv,
         on_data_to_send => \&dccp_subtun_minimal_send,
+        send_keepalive  => \&send_keepalive,
         on_connection_error => sub {
             my ($operation, $errnum, $errstr) = @_[ARG0, ARG1, ARG2];
             warn("Client $operation error $errnum: $errstr\n");
@@ -1535,6 +1536,15 @@ POE::Session->create(
 # TODO: Payload übeall mit 0x0 preceden
 #    - in der simple_send() machen
 #    - muss dafür probe_response sending manuel ohne die simple_send() machen
+# DONE: send_keepalive fertig machen
+sub send_keepalive
+{
+    my $keepalive_packet = 0xaaaaaaaaaaaaaaaaaaaaaaaa;
+    my $actually_sent_bytes =  $_[HEAP]->{subtun_sock}->syswrite($keepalive_packet);
+    $TXRXLOG->ERR("dccp_subtun_minimal_send(): socket error: errno: $!") if (!defined($actually_sent_bytes));
+
+}
+
 # Keepalive session
 # Arranges sending keep alive packets every 50ms
 # on subtunnels that are unused, to keep underlying proto stats up to date
