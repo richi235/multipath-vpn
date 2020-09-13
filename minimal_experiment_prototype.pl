@@ -1563,36 +1563,40 @@ sub send_keepalive
 
 }
 
-# Keepalive session
-# Arranges sending keep alive packets every 50ms
-# on subtunnels that are unused, to keep underlying proto stats up to date
-POE::Session->create(
-    inline_states => {
-        _start => sub {
-            # runs once at start
-            # should initialize all data structures
-            # and schedule the next "uphold_subtunnels" in 50 ms
-        },
-        uphold_subtunnels => sub {
-            # Does the following:
-            # * iterate over array and check if true
-            #    - if yes call send_keepalive()
-            # * schedule itself again in 50ms
-            my $subtun_count = @subtun_sockets;
+if ($own_header)
+{
+    # Keepalive session
+    # Arranges sending keep alive packets every 50ms
+    # on subtunnels that are unused, to keep underlying proto stats up to date
+    POE::Session->create(
+        inline_states => {
+            _start => sub {
+                # runs once at start
+                # should initialize all data structures
+                # and schedule the next "uphold_subtunnels" in 50 ms
+                $poe_kernel->delay( uphold_subtunnels => 0.05 );
+            },
+            uphold_subtunnels => sub {
+                # Does the following:
+                # * iterate over array and check if true
+                #    - if yes call send_keepalive()
+                # * schedule itself again in 50ms
+                my $subtun_count = @subtun_sockets;
 
-            for (my $i=0; $i < $subtun_count; $i++ ) {
+                for (my $i=0; $i < $subtun_count; $i++ ) {
 
-                my $sock_id_used = $recently_used[$i];
-                if ( $sock_id_used ) {
-                    $poe_kernel->call( $subtun_sessions[$i] , "send_keepalive");
+                    my $sock_id_used = $recently_used[$i];
+                    if ( $sock_id_used ) {
+                        $poe_kernel->call( $subtun_sessions[$i] , "send_keepalive");
+                    }
+
+                    $recently_used[$i] = 0;
                 }
-
-                $recently_used[$i] = 0;
-            }
-            $poe_kernel->delay( uphold_subtunnels => 0.05 );
-        },
-    }
-);
+                $poe_kernel->delay( uphold_subtunnels => 0.05 );
+            },
+        }
+    );
+}
 
 set_via_tunnel_routes(1);
 $start_time = time();
