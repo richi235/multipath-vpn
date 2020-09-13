@@ -1315,9 +1315,9 @@ sub dccp_subtun_recv
     # if we're configured to use a tunnelling header
     if ( $own_header ) {
         # check the first byte (our header)
-        # 0xa ==> probe request ==> send probe response
-        # 0xb ==> probe response  ==> all fine, drop
-        # 0x0 ==> data  ==> put into tap device
+        # "a" ==> probe request ==> send probe response
+        # "b" ==> probe response  ==> all fine, drop
+        # "c" ==> data  ==> put into tap device
 
         # Sending a probe response is technically not necesary. (Our goal is to keep
         # the DCCP stats of the socket up to date, since DCCP automatically sends an ACK,
@@ -1325,23 +1325,25 @@ sub dccp_subtun_recv
         # we speed up and streamline the process.
 
         # This gets the first byte of $curinput and deletes it, in one call, quite cool
-        my $header = bytes::substr($curinput, 0, 1, "");
+        my $header = byte::substr($curinput, 0, 1, "");
 
-        if ( $header == 0xa) { # probe request
+        if ( $header eq "a") { # probe request
             # send probe response
-            my $probe_response = 0xb;
+            my $probe_response = "b" x 100;
             # XXX: Maybe this gives an encoding issue and we have to use
             # pack()/ unpack() here and above for the header bytes
 
-            $poe_kernel->call( $_[SESSION], "on_data_to_send", $probe_response );
+            my $actually_sent_bytes =  $_[HEAP]->{subtun_sock}->syswrite($keepalive_packet);
+            $TXRXLOG->ERR("dccp_subtun_minimal_send(): socket error: errno: $!")
+                if (!defined($actually_sent_bytes));
 
             # no further payload processing, just return
             return 1;
-        } elsif ( $header == 0xb) { # probe response
+        } elsif ( $header eq "b") { # probe response
             return 2;
             # procssing done, only a probe response
             # do not put into tun device
-        } elsif ( $header == 0x0) { # payload packet
+        } elsif ( $header eq "c") { # payload packet
             # nothing to do here, just continue payload processing
             # header is already striped from packet
         } else {
