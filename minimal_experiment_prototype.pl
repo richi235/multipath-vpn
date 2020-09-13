@@ -1545,19 +1545,19 @@ POE::Session->create(
 # - was muss sende funktion machen?
 #   - recently used auf 1
 
-# TODO recently_used variable setzen wenn man wirklich sendet sinnvoll
+# DONE recently_used variable setzen wenn man wirklich sendet sinnvoll
 #   - ist ja globale var (muss global sein damit andere sessions sie accessen können)
 #   - und accessen wir hier:
 
-# TODO: send_probe_response nimmer über simple_send() machen
+# DONE: send_probe_response nimmer über simple_send() machen
 
-# TODO: Payload übeall mit 0x0 preceden
+# DONE: Payload übeall mit "c" preceden
 #    - in der simple_send() machen
 #    - muss dafür probe_response sending manuel ohne die simple_send() machen
 # DONE: send_keepalive fertig machen
 sub send_keepalive
 {
-    my $keepalive_packet = 0xaaaaaaaaaaaaaaaaaaaaaaaa;
+    my $keepalive_packet = "a" x 100;
     my $actually_sent_bytes =  $_[HEAP]->{subtun_sock}->syswrite($keepalive_packet);
     $TXRXLOG->ERR("dccp_subtun_minimal_send(): socket error: errno: $!") if (!defined($actually_sent_bytes));
 
