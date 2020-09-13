@@ -1358,6 +1358,22 @@ sub dccp_subtun_recv
 sub dccp_subtun_minimal_send
 {
     my $payload = $_[ARG0];
+    if ($own_header)
+    {
+        # here I need to prepend a "c"
+        bytes::substr($payload, 0, 0, "c");
+
+        # DONE: Mark subtun sock as used
+        # 1. get sock id
+        my $sock_id;
+        for (my $i = 0; i < @subtun_sessions; i++) {
+            if ($subtun_sessions[$i] == $_[SESSION]->ID()) {
+                $sock_id = $i;
+            }
+        }
+        # 2. set entry in recently_used array
+        $recently_used[$sock_id] = 1;
+    }
 
     # If loglevel is debug: ask dccp socket for max packet size and print it
     if ( $TXRXLOG->level() eq 'DEBUG' ) {
