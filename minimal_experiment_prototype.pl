@@ -318,7 +318,7 @@ sub init_loggers
     });
 
     $CONLOG = Log::Fast->new({
-        level           => $loglevel_algo,
+        level           => $loglevel_connect,
         type            => 'fh',
         fh              => \*STDOUT,
     });
