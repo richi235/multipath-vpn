@@ -203,7 +203,7 @@ my $loglevel_txrx = 'WARN';
 my $loglevel_algo = 'WARN';
 my $loglevel_flowids = 'WARN';
 my $loglevel_connect = 'NOTICE';
-my $loglevel_scilog  = 'NOTICE';
+my $loglevel_scilog  = 'WARN';
 my $own_header = 0;
 
 my $sched_algo = "afmt_fl";
