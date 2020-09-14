@@ -184,7 +184,7 @@ use constant SIOCOUTQ       => 21521;
 my $tuntap_session = undef;
 my @subtun_sessions = ();  # contains session IDs
 my @subtun_sockets  = ();  # contains socket file handles
-my @recently_used = ()     # true if used in th last 100ms used for keepalives, indexed by sock_ids
+my @recently_used = ();    # true if used in th last 100ms used for keepalives, indexed by sock_ids
 my $packet_scheduler;      # contains a function
 
 $| = 1;                    # disable terminal output buffering
@@ -253,7 +253,7 @@ sub parse_cli_args
                'lalgo=s'      => \$loglevel_algo,
                'sched=s'      => \$sched_algo,
                'ccid=i'       => \$ccid_to_use,
-               'h|help'       => \$help
+               'h|help'       => \$help,
                'own_header'   => \$own_header);
 
     if ( $help ) {
@@ -1325,7 +1325,7 @@ sub dccp_subtun_recv
         # we speed up and streamline the process.
 
         # This gets the first byte of $curinput and deletes it, in one call, quite cool
-        my $header = byte::substr($curinput, 0, 1, "");
+        my $header = bytes::substr($curinput, 0, 1, "");
 
         if ( $header eq "a") { # probe request
             # send probe response
@@ -1333,7 +1333,7 @@ sub dccp_subtun_recv
             # XXX: Maybe this gives an encoding issue and we have to use
             # pack()/ unpack() here and above for the header bytes
 
-            my $actually_sent_bytes =  $_[HEAP]->{subtun_sock}->syswrite($keepalive_packet);
+            my $actually_sent_bytes =  $_[HEAP]->{subtun_sock}->syswrite($probe_response);
             $TXRXLOG->ERR("dccp_subtun_minimal_send(): socket error: errno: $!")
                 if (!defined($actually_sent_bytes));
 
@@ -1366,7 +1366,7 @@ sub dccp_subtun_minimal_send
         # DONE: Mark subtun sock as used
         # 1. get sock id
         my $sock_id;
-        for (my $i = 0; i < @subtun_sessions; i++) {
+        for (my $i = 0; $i < @subtun_sessions; $i++) {
             if ($subtun_sessions[$i] == $_[SESSION]->ID()) {
                 $sock_id = $i;
             }
