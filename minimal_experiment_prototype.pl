@@ -254,7 +254,7 @@ sub parse_cli_args
                'sched=s'      => \$sched_algo,
                'ccid=i'       => \$ccid_to_use,
                'h|help'       => \$help,
-               'own_header'   => \$own_header);
+               'hdr'          => \$own_header);
 
     if ( $help ) {
         say("This is the unofroest Multipath Tunneling prototype, for scientific testing. Science!
@@ -266,7 +266,7 @@ It supports the following cli params:
                            # or 'otias_sock_drop' or 'afmt_noqueue_(drop|busy_wait)'
                            # or 'llfmt_noqueue_busy_wait'
          'h|help'       => \$help
-         'own_header'   => \$own_header
+         'hdr'          => \$own_header
 
   ## Logging: (Levels: ERR | WARN | NOTICE | INFO | DEBUG)
          'lcon=s'       => \$loglevel_connect # default: NOTICE
