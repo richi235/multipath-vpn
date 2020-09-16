@@ -603,8 +603,9 @@ sub dccp_get_tx_infos
                     . " | sock_fill: " . $sock_hash->{sock_fill}
                     # . " | ccwnd: " . (($send_rate >> 6)*($srtt/1_000_000))/1_000 . "kB"
                 );
-    my $rel_time = time() - $start_time;
-    $SCILOG->NOTICE("$rel_time    $sock_hash->{sock_id}    $sock_hash->{in_flight}    $sock_hash->{send_rate}    $sock_hash->{srtt}");
+    $SCILOG->NOTICE("%f    $sock_hash->{sock_id}    $sock_hash->{in_flight}    $sock_hash->{send_rate}    $sock_hash->{srtt}",
+                    sub {return time() - $start_time; # rel_time
+                     });
     # I decided to not print the calculated send_rate because it was almost always 0 in my experiments
 
     return $sock_hash;
