@@ -1558,10 +1558,13 @@ POE::Session->create(
 # DONE: send_keepalive fertig machen
 sub send_keepalive
 {
+    my $sock_id = $_[ARG0];
     my $keepalive_packet = "a" x 100;
     my $actually_sent_bytes =  $_[HEAP]->{subtun_sock}->syswrite($keepalive_packet);
     $TXRXLOG->ERR("dccp_subtun_minimal_send(): socket error: errno: $!") if (!defined($actually_sent_bytes));
-
+    $CONLOG->INFO("[KEEPALIVE] %f  Sent a keepalive on subtunnel $sock_id",
+                  sub {return time() - $start_time; # rel_time
+                   });
 }
 
 if ($own_header)
@@ -1586,9 +1589,8 @@ if ($own_header)
 
                 for (my $i=0; $i < $subtun_count; $i++ ) {
 
-                    my $sock_id_used = $recently_used[$i];
-                    if ( $sock_id_used ) {
-                        $poe_kernel->call( $subtun_sessions[$i] , "send_keepalive");
+                    if ( $recently_used[$i] ) {
+                        $poe_kernel->call( $subtun_sessions[$i] , "send_keepalive", $i);
                     }
 
                     $recently_used[$i] = 0;
