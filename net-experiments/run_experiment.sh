@@ -17,18 +17,18 @@ echo $results_dir
 mkdir $results_dir
 #udp_flag=${udp_flag}" -l 1392" # added after mkdir because spaces are hard + unneeded info in dir name
 
-other_ctx_prefix="ip netns exec T_entry"
-# other_ctx_prefix="ssh root@tentry"
+# other_ctx_prefix="ip netns exec T_entry"
+other_ctx_prefix="ssh root@tentry"
 
 timeout $((runtime+7)) ../minimal_experiment_prototype.pl -c ../ip_netns/T_exit.cfg  \
               --sched=$sched_algo $hdr_opt --ccid=2 > $results_dir/texit_logs  &
 sleep 1
 
 #timeout $((runtime+5)) tcpdump -i tun0 -w afmt_tun0_trace.pcap "dst 192.168.65.2" &
-timeout $((runtime+5)) tcpdump -i veth12 -w afmt_veth12.pcap "proto dccp" &
+# timeout $((runtime+5)) tcpdump -i veth12 -w afmt_veth12.pcap "proto dccp" &
 timeout $((runtime+4)) iperf $udp_flag  -s -i 0.1 --reportstyle C > iperf_server_output.csv &
 
-$other_ctx_prefix timeout $((runtime+4)) ../minimal_experiment_prototype.pl \
+$other_ctx_prefix timeout $((runtime+4)) ~/Coding/Reinhard-vpn/minimal_experiment_prototype.pl \
             -c ../ip_netns/T_entry.cfg --sched=$sched_algo --ccid=2 \
             --lcon=INFO  --lalgo=NOTICE  $hdr_opt --lsci=NOTICE  > tentry_logs &
 sleep 1
