@@ -11,7 +11,7 @@ udp_flag= #"-u"
 bandwith_opt= #"-b20m"
 flowcount=6
 hdr_opt= #"-hdr"
-run=r2_new_net
+run=r1_real_net
 results_dir="${runtime}s_${sched_algo}_${udp_flag}_${flowcount}flows_${bandwith_opt}_${hdr_opt}_$run"   # the dir the results will be stored in
 echo $results_dir
 mkdir $results_dir
@@ -28,7 +28,7 @@ sleep 1
 # timeout $((runtime+5)) tcpdump -i veth12 -w afmt_veth12.pcap "proto dccp" &
 timeout $((runtime+4)) iperf $udp_flag  -s -i 0.1 --reportstyle C > iperf_server_output.csv &
 
-$other_ctx_prefix timeout $((runtime+4)) ~/Coding/Reinhard-vpn/minimal_experiment_prototype.pl \
+$other_ctx_prefix timeout $((runtime+4)) ~/Coding/Reinhard-VPN/minimal_experiment_prototype.pl \
              --sched=$sched_algo --ccid=2 \
             --lcon=INFO  --lalgo=NOTICE  $hdr_opt --lsci=NOTICE  > tentry_logs &
 sleep 1
