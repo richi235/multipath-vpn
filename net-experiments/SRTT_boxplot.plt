@@ -3,13 +3,15 @@
 set terminal pdf
 set output "SRTTs.pdf"
 set title "SRTTs"
+set ylabel "ms"
+unset xlabel
 
 set style fill solid 0.5 border -1
 set style data boxplot
 set style boxplot nooutliers
 #set boxwidth  0.5
 
-plot '<grep -P -o "(?<=K/)(\d*)(?= us )" iperf_tentry.log' using (1.0):($1/1000)
+plot '<grep -P -o "(?<=K/)(\d*)(?= us )" iperf_tentry.log' using (1.0):($1/1000) title "RTTs"
 
 
 # $0 is the data record number (usually same as line number in data file)
