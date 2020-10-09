@@ -13,17 +13,17 @@ set y2label "ms"
 #set title "Subtun 0"
 plot "subtun0_time_inflight_cwnd_srtt.tsv" using 1:4 with lines title "cwnd" axis x1y1, \
      "subtun0_time_inflight_cwnd_srtt.tsv" using 1:3 with lines title "packets in flight" axis x1y1, \
-     "" using 1:($5/1000) with lines title "SRTT" axis x1y2
+     "" using 1:($5) with lines title "SRTT" axis x1y2
 
 #set title "Subtun 1"
 plot "subtun1_time_inflight_cwnd_srtt.tsv" using 1:4 with lines title "cwnd", \
      "subtun1_time_inflight_cwnd_srtt.tsv" using 1:3 with lines title "packets in flight", \
-     "" using 1:($5/1000) with lines title "SRTT" axis x1y2
+     "" using 1:($5) with lines title "SRTT" axis x1y2
 
 #set title "Subtun 2"
 plot "subtun2_time_inflight_cwnd_srtt.tsv" using 1:4 with lines title "cwnd", \
      "subtun2_time_inflight_cwnd_srtt.tsv" using 1:3 with lines title "packets in flight", \
-     "" using 1:($5/1000) with lines title "SRTT" axis x1y2
+     "" using 1:($5) with lines title "SRTT" axis x1y2
 
 unset multiplot
 
