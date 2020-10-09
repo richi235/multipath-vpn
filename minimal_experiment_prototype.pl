@@ -586,8 +586,7 @@ sub dccp_get_tx_infos
             = unpack('LLLii', $dccp_info_struct);
         $sock_hash = {
             sock_id     => $socket_id,
-            srtt        => ($srtt * 1_000) >> 3,  # smoothed RTT estimate, scaled by 2^3
-                           # converted to μs
+            srtt        => $srtt >> 1,  # smoothed RTT estimate
             send_rate   => $cwnd,
             sock_fill   => $buffer_fill,
             in_flight   => $pipe,
