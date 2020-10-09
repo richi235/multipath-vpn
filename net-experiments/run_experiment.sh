@@ -20,7 +20,7 @@ mkdir $results_dir
 # other_ctx_prefix="ip netns exec T_entry"
 other_ctx_prefix="ssh root@tentry"
 
-timeout $((runtime+7)) ../minimal_experiment_prototype.pl -c ../ip_netns/T_exit.cfg  \
+timeout $((runtime+7)) ../minimal_experiment_prototype.pl  \
               --sched=$sched_algo $hdr_opt --ccid=2 > $results_dir/texit_logs  &
 sleep 1
 
@@ -29,7 +29,7 @@ sleep 1
 timeout $((runtime+4)) iperf $udp_flag  -s -i 0.1 --reportstyle C > iperf_server_output.csv &
 
 $other_ctx_prefix timeout $((runtime+4)) ~/Coding/Reinhard-vpn/minimal_experiment_prototype.pl \
-            -c ../ip_netns/T_entry.cfg --sched=$sched_algo --ccid=2 \
+             --sched=$sched_algo --ccid=2 \
             --lcon=INFO  --lalgo=NOTICE  $hdr_opt --lsci=NOTICE  > tentry_logs &
 sleep 1
 $other_ctx_prefix iperf $udp_flag  -t $runtime $bandwith_opt  \
