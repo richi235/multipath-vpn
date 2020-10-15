@@ -28,12 +28,12 @@ sleep 1
 # timeout $((runtime+5)) tcpdump -i veth12 -w afmt_veth12.pcap "proto dccp" &
 timeout $((runtime+4)) iperf $udp_flag  -s -i 0.1 --reportstyle C > iperf_server_output.csv &
 
-$other_ctx_prefix timeout $((runtime+4)) ~/Coding/Reinhard-VPN/minimal_experiment_prototype.pl \
+$other_ctx_prefix "timeout $((runtime+4)) ~/Coding/Reinhard-VPN/minimal_experiment_prototype.pl \
              --sched=$sched_algo --ccid=2 \
-            --lcon=INFO  --lalgo=NOTICE  $hdr_opt --lsci=NOTICE  > tentry_logs &
+            --lcon=INFO  --lalgo=NOTICE  $hdr_opt --lsci=NOTICE  > tentry_logs &"
 sleep 1
-$other_ctx_prefix iperf $udp_flag  -t $runtime $bandwith_opt  \
-		            -e -c 192.168.65.2 -i 0.1  -P $flowcount  > iperf_tentry.log &
+$other_ctx_prefix "iperf $udp_flag  -t $runtime $bandwith_opt  \
+		            -e -c 192.168.65.2 -i 0.1  -P $flowcount  > iperf_tentry.log &"
 
 sleep $((runtime+3))
 
