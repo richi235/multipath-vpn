@@ -18,7 +18,8 @@ mkdir $results_dir
 #udp_flag=${udp_flag}" -l 1392" # added after mkdir because spaces are hard + unneeded info in dir name
 
 # other_ctx_prefix="ip netns exec T_entry"
-other_ctx_prefix="ssh root@tentry"
+tentry_ssh_dest="root@tentry"
+other_ctx_prefix="ssh $tentry_ssh_dest"
 
 timeout $((runtime+7)) ../minimal_experiment_prototype.pl  \
               --sched=$sched_algo $hdr_opt --ccid=2 > $results_dir/texit_logs  &
@@ -37,8 +38,21 @@ $other_ctx_prefix "iperf $udp_flag  -t $runtime $bandwith_opt  \
 
 sleep $((runtime+3))
 
+# todo: nachdenken über file locations
+# idealerweise sind die commandos ja gleich für alle
+
+# mal schuen: wo landet die datei wenn relativer pfad bei ssh remote command
+#  antwort: im homedir, as expected
+
 ## ----- here we block for 12 seconds, after that
 ## ----- generatiing graphs starts:
+
+# if we used ssh copy log files from other host to us:
+# uses bash regex matching, checks if prefx starts with "ssh "
+if [[ $other_ctx_prefix =~ ^ssh[[:blank:]]  ]] ; then
+    echo "yas"
+    scp $tentry_ssh_dest iperf_tentry.log tentry_logs .
+fi
 
 #./get_delay_variations.py afmt_tun0_trace.pcap > delay_variations
 ./demux_subtun_records.pl time_inflight_cwnd_srtt.tsv
