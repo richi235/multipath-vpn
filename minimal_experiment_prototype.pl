@@ -1348,7 +1348,7 @@ sub dccp_subtun_recv
             # header is already striped from packet
         } else {
             $TXRXLOG->WARN("Got packet with broken header");
-            die();
+            # die();
         }
     }
 
