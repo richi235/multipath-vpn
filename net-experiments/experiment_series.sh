@@ -6,15 +6,16 @@
 # Sourcing means the current shell will execute the script instead of starting a new bash 
 # Every experimnt script will place its result dir into our $series_dir by itself
 
-runtime=60
-flowcount=6
-run=r1
 probe_cmd=iperf
 
-series_dir="series_${runtime}s_${flowcount}flows_${run}"
+runtime=50
+flowcount=4
+run=r1
 udp_flag= #"-u"
-bandwith_opt= #"-b20m"
-hdr_opt="-hdr"
+bandwith_opt= #"-b5m"
+hdr_opt= #"-hdr"
+
+series_dir="series_${runtime}s_${udp_flag}_${bandwith_opt}_${flowcount}flows_${run}_${hdr_opt}_2subtun_8,8"
 
 mkdir $series_dir
 
@@ -36,6 +37,7 @@ sched_algo=afmt_fl
 echo -en "\e[32;1m[4/6]  \e[0m"
 source ./run_experiment.sh
 
+hdr_opt= #"-hdr"
 sched_algo=otias_sock_drop
 echo -en "\e[32;1m[5/6]  \e[0m"
 source ./run_experiment.sh
