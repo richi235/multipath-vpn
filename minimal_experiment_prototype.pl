@@ -302,7 +302,7 @@ sub toggle_sched_algo
 
 sub init_loggers
 {
-    open(my $scilog_file_fd, ">", "time_inflight_cwnd_srtt.tsv")
+    open(my $scilog_file_fd, ">", "/tmp/time_inflight_cwnd_srtt.tsv")
         or croak("failed to open logfile for scilog");
 
     $TXRXLOG = Log::Fast->new({
