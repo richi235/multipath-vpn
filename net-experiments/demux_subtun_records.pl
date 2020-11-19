@@ -35,6 +35,6 @@ while (<>) {
     if (0 <= $subtun_id && $subtun_id <= 2) {
         print { $subtun_id_to_fd{$subtun_id} } $_ ;
     } else {
-        say("Error scanned invalid line");
+        # say("Error scanned invalid line");
     }
 }
