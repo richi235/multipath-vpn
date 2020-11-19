@@ -17,15 +17,14 @@ sleep 1
 
 #timeout $((runtime+5)) tcpdump -i tun0 -w afmt_tun0_trace.pcap "dst 192.168.65.2" &
 # timeout $((runtime+5)) tcpdump -i veth12 -w afmt_veth12.pcap "proto dccp" &
-#iperf3 $udp_flag  -s -i 0.1 --reportstyle C > iperf_server_output.csv &
-iperf3 $udp_flag  -s -i 0.1  > iperf_server_output.log  &
+#$probe_cmd $udp_flag  -s -i 0.1 --reportstyle C > iperf_server_output.csv &
 
 $other_ctx_prefix "timeout $((runtime+26)) ~/Coding/Reinhard-VPN/minimal_experiment_prototype.pl \
              --sched=$sched_algo --ccid=2 \
             --lcon=INFO  --lalgo=NOTICE  $hdr_opt --lsci=NOTICE  > tentry_logs" &
 sleep 1
-$other_ctx_prefix "iperf3 $udp_flag  -t $runtime $bandwith_opt  \
-		            -c 192.168.65.2 -i 0.1  -P $flowcount  > iperf_tentry.log" &
+$other_ctx_prefix "$probe_cmd $udp_flag  -t $runtime $bandwith_opt  \
+		            -c 192.168.65.2 -i 1 -e -f m  -P $flowcount  > /tmp/iperf_tentry.log" &
 
 sleep $((runtime+27))
 
@@ -53,16 +52,16 @@ gnuplot all_subtuns_time_inflight_cwnd.plt # tunnel internal infos
 # grep --fixed-strings "tc -netns" ../ip_netns/setup_namespaces_and_network.sh > $results_dir/network_conf
 # rm afmt_tun0_trace.pcap
 # rm *.tsv
-mv *.tsv all_subtuns_time_inflight_cwnd.pdf  tentry_logs iperf_server_output.log iperf_tentry.log $results_dir
-# delay_variations afmt_pdv.pdf Throughput.pdf SRTTs.pdf
+mv *.tsv all_subtuns_time_inflight_cwnd.pdf  SRTTs.pdf  tentry_logs iperf_tentry.log $results_dir
+# delay_variations afmt_pdv.pdf Throughput.pdf 
 
 
 #exit
 
 mv $results_dir $series_dir
 
-sleep 5s
-pkill iperf3 # kill leftover iperf3 server on texit if it still exists
-sleep 2s
-killall iperf3
-sleep 10s
+sleep 15s
+#pkill $probe_cmd # kill leftover $probe_cmd server on texit if it still exists
+#sleep 2s
+#killall $probe_cmd
+#sleep 10s
