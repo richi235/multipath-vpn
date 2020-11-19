@@ -2,7 +2,7 @@
 # This runs a experiment with einsfroest. And generates some graphs from it
 # (packet delay variation and throughput). This is the server side (T_exit)
 
-results_dir="${runtime}s_${sched_algo}_${udp_flag}_${flowcount}flows_${bandwith_opt}_${hdr_opt}"   # the dir the results will be stored in
+results_dir="${sched_algo}"   # the dir the results will be stored in
 echo -e "\e[31;1m$results_dir \e[0m"
 mkdir $results_dir
 #udp_flag=${udp_flag}" -l 1392" # added after mkdir because spaces are hard + unneeded info in dir name
