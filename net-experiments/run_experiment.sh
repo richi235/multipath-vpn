@@ -19,23 +19,20 @@ sleep 1
 # timeout $((runtime+5)) tcpdump -i veth12 -w afmt_veth12.pcap "proto dccp" &
 #$probe_cmd $udp_flag  -s -i 0.1 --reportstyle C > iperf_server_output.csv &
 
-$other_ctx_prefix "timeout $((runtime+26)) ~/Coding/Reinhard-VPN/minimal_experiment_prototype.pl \
+$other_ctx_prefix "timeout $((runtime+16)) ~/Coding/Reinhard-VPN/minimal_experiment_prototype.pl \
              --sched=$sched_algo --ccid=2 \
-sleep 1
             --lcon=INFO  --lalgo=NOTICE  $hdr_opt --lsci=NOTICE  > /tmp/tentry_logs" &
+sleep 3
 $other_ctx_prefix "$probe_cmd $udp_flag  -t $runtime $bandwith_opt  \
 		            -c 192.168.65.2 -i 1 -e -f m  -P $flowcount  > /tmp/iperf_tentry.log" &
 
-sleep $((runtime+27))
+sleep $((runtime+17))
+## ----- here we block for 12 seconds, after that
+## ----- generatiing graphs starts:
 
-# todo: nachdenken über file locations
-# idealerweise sind die commandos ja gleich für alle
 
 # mal schuen: wo landet die datei wenn relativer pfad bei ssh remote command
 #  antwort: im homedir, as expected
-
-## ----- here we block for 12 seconds, after that
-## ----- generatiing graphs starts:
 
 # if we used ssh copy log files from other host to us:
 # uses bash regex matching, checks if prefx starts with "ssh "
