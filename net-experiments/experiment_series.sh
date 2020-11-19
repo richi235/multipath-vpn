@@ -48,4 +48,6 @@ cd $series_dir
 tail -n 4 */iperf_tentry.log > iperf_client_sums
 tail -n 4 */iperf_server_output.log > iperf_server_sums
 
+gnuplot ../all_throughput_intvervals_boxplots.plt ../all_SRTT_boxplots.plt
+
 echo -e "\e[31;1mSeries dir: $series_dir\e[0m"
