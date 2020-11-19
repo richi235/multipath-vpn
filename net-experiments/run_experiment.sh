@@ -11,8 +11,8 @@ mkdir $results_dir
 tentry_ssh_dest="root@tentry"
 other_ctx_prefix="ssh $tentry_ssh_dest"
 
-timeout $((runtime+28)) ../minimal_experiment_prototype.pl  \
-              --sched=$sched_algo $hdr_opt --ccid=2 > $results_dir/texit_logs  &
+timeout $((runtime+18)) ../minimal_experiment_prototype.pl  \
+              --sched=$sched_algo $hdr_opt --ccid=2 > /tmp/texit_logs  &
 sleep 1
 
 #timeout $((runtime+5)) tcpdump -i tun0 -w afmt_tun0_trace.pcap "dst 192.168.65.2" &
@@ -21,8 +21,8 @@ sleep 1
 
 $other_ctx_prefix "timeout $((runtime+26)) ~/Coding/Reinhard-VPN/minimal_experiment_prototype.pl \
              --sched=$sched_algo --ccid=2 \
-            --lcon=INFO  --lalgo=NOTICE  $hdr_opt --lsci=NOTICE  > tentry_logs" &
 sleep 1
+            --lcon=INFO  --lalgo=NOTICE  $hdr_opt --lsci=NOTICE  > /tmp/tentry_logs" &
 $other_ctx_prefix "$probe_cmd $udp_flag  -t $runtime $bandwith_opt  \
 		            -c 192.168.65.2 -i 1 -e -f m  -P $flowcount  > /tmp/iperf_tentry.log" &
 
@@ -40,9 +40,10 @@ sleep $((runtime+27))
 # if we used ssh copy log files from other host to us:
 # uses bash regex matching, checks if prefx starts with "ssh "
 if [[ $other_ctx_prefix =~ ^ssh[[:blank:]]  ]] ; then
-    scp -q "$tentry_ssh_dest:{*tentry*log*,time_inflight*.tsv}" .
+    scp -q "$tentry_ssh_dest:/tmp/{*tentry*log*,time_inflight*.tsv}" .
 fi
 
+mv /tmp/texit_logs .
 #./get_delay_variations.py afmt_tun0_trace.pcap > delay_variations
 ./demux_subtun_records.pl time_inflight_cwnd_srtt.tsv
 
