@@ -50,4 +50,15 @@ tail -n 4 */iperf_server_output.log > iperf_server_sums
 
 gnuplot ../all_throughput_intvervals_boxplots.plt ../all_SRTT_boxplots.plt
 
+# Write a file with our path config
+echo "ig0:" 		   		> path_config
+ssh root@ig0 "ip r ; and tc qdisc ls"   >> path_config
+echo "ig1:" 		   		>> path_config
+ssh root@ig1 "ip r ; and tc qdisc ls"   >> path_config
+echo "ig2:" 		   		>> path_config
+ssh root@ig2 "ip r ; and tc qdisc ls"   >> path_config
+
+scp root@tentry:/etc/multivpn.cfg tentry_multivpn.cfg
+cp  /etc/multivpn.cfg texit_multivpn.cfg
+
 echo -e "\e[31;1mSeries dir: $series_dir\e[0m"
