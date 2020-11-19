@@ -45,8 +45,9 @@ mv /tmp/texit_logs .
 ./demux_subtun_records.pl time_inflight_cwnd_srtt.tsv
 
 gnuplot all_subtuns_time_inflight_cwnd.plt # tunnel internal infos
+gnuplot   SRTT_boxplot.plt
 #gnuplot packet_delay_variation_plot.plt
-# gnuplot throughput2.plt   SRTT_boxplot.plt
+# gnuplot throughput2.plt 
 # grep --fixed-strings "tc -netns" ../ip_netns/setup_namespaces_and_network.sh > $results_dir/network_conf
 # rm afmt_tun0_trace.pcap
 # rm *.tsv
