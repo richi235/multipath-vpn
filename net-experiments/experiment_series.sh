@@ -9,15 +9,39 @@
 probe_cmd=iperf
 iperf_report_interval=1
 
-runtime=50
-warmup_seconds=10
+runtime=20
+warmup_seconds=05
 flowcount=4
 run=r1
 udp_flag= #"-u"
-bandwith_opt= #"-b5m"
+bandwith_opt= #"-b3m"
 hdr_opt= #"-hdr"
 
-series_dir="series_${runtime}s_${udp_flag}_${bandwith_opt}_${flowcount}flows_${run}_${hdr_opt}_2subtun_8,8"
+ig0_rtt=50    # in ms
+ig0_rate=8mbit
+
+ig1_rtt=70
+ig1_rate=16mbit
+
+ig2_rtt=50
+ig2_rate=8mbit
+
+echo "Setting path characteristics on all subtunnel paths..."
+# ig0
+ssh root@ig0 "tc qdisc change dev eth0.11 root netem delay $((ig0_rtt/2))ms rate $ig0_rate"
+ssh root@ig0 "tc qdisc change dev eth0.21 root netem delay $((ig0_rtt/2))ms rate $ig0_rate"
+
+# ig1
+ssh root@ig1 "tc qdisc change dev eth0.12 root netem delay $((ig1_rtt/2))ms rate $ig1_rate"
+ssh root@ig1 "tc qdisc change dev eth0.22 root netem delay $((ig1_rtt/2))ms rate $ig1_rate"
+
+# ig2
+ssh root@ig2 "tc qdisc change dev eth0.13 root netem delay $((ig2_rtt/2))ms rate $ig2_rate"
+ssh root@ig2 "tc qdisc change dev eth0.23 root netem delay $((ig2_rtt/2))ms rate $ig2_rate"
+
+echo "Done!"
+
+series_dir="series_${runtime}s_${udp_flag}_${bandwith_opt}_${flowcount}flows_${run}_${hdr_opt}_2subtun__ig1:${ig1_rtt}ms,${ig1_rate}__ig2:${ig2_rtt}ms,${ig2_rate}"
 
 mkdir $series_dir
 
