@@ -40,7 +40,7 @@ if [[ $other_ctx_prefix =~ ^ssh[[:blank:]]  ]] ; then
     scp -q "$tentry_ssh_dest:/tmp/{*tentry*log*,time_inflight*.tsv}" .
 fi
 
-mv /tmp/texit_logs .
+mv /tmp/texit_logs $results_dir
 #./get_delay_variations.py afmt_tun0_trace.pcap > delay_variations
 ./demux_subtun_records.pl time_inflight_cwnd_srtt.tsv
 
