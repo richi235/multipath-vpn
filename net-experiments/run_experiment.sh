@@ -52,6 +52,10 @@ gnuplot   SRTT_boxplot.plt
 # rm afmt_tun0_trace.pcap
 # rm *.tsv
 mv *.tsv all_subtuns_time_inflight_cwnd.pdf  SRTTs.pdf  tentry_logs iperf_tentry.log $results_dir
+
+# Compress the longer log/data files still viewable with vim
+gzip $results_dir/*_logs
+gzip $results_dir/*.tsv
 # delay_variations afmt_pdv.pdf Throughput.pdf 
 
 
