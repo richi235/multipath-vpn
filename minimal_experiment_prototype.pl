@@ -659,7 +659,7 @@ sub send_scheduler_afmt_fl
         # just returning without sending the packet is equivalent to droppning it
     }
 
-    $ALGOLOG->DEBUG("\nsend_scheduler_afmt_fl() called with $subtun_count sockets, succesfully got flow id: $flow_id");
+    $ALGOLOG->DEBUG("\n%f  send_scheduler_afmt_fl() called with $subtun_count sockets, succesfully got flow id: $flow_id", sub { return time() - $start_time; });
     my $packet_size = bytes::length($packet);
 
     # say("Current flow id: $flow_id" . "\n Flow table: " . Dumper(%flow_table));
@@ -699,7 +699,7 @@ sub send_scheduler_afmt_fl
         # also updates the real array in %flow_table
         $value_array->[0] = $opti_sock_id;
         $value_array->[1] = time();
-        $ALGOLOG->NOTICE("send_scheduler_afmt_fl(): continuing existing flow $flow_id , using sock id: $opti_sock_id, packet size: $packet_size");
+        $ALGOLOG->NOTICE("%f   send_scheduler_afmt_fl(): continuing existing flow $flow_id , using sock id: $opti_sock_id, packet size: $packet_size", sub { return time() - $start_time; });
         $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $packet );
         return;
     } else { # packet starts a new flow
@@ -743,8 +743,7 @@ sub get_free_sockets
         if ( $free_slots > 0) {
             push(@free_sockets, $sock_hash);
         }
-        $ALGOLOG->INFO("SRTT: sock_id: $i | cwnd: $sock_hash->{send_rate} | free slots: $free_slots"
-                            . " | SRTT: $sock_hash->{srtt}");
+        $ALGOLOG->INFO("%f   get_free_sockets: sock_id: $i | cwnd: $sock_hash->{send_rate} | free slots: $free_slots" . " | SRTT: $sock_hash->{srtt}", sub { return time() - $start_time; });
     }
 
     my $free_sock_count = @free_sockets;
@@ -798,7 +797,8 @@ sub send_scheduler_otias
     my $opti_sock_id = -1;
 
     if ( $subtun_count == 0) {
-        $ALGOLOG->WARN("OTIAS: Called with 0 subtuns available");
+        $ALGOLOG->WARN("%f  OTIAS: Called with 0 subtuns available"
+                           , sub { return time() - $start_time; } );
         return -1;
     }
 
@@ -837,7 +837,8 @@ sub send_scheduler_otias
 
     if ( $opti_sock_id == -1) {
         return -1;
-        $ALGOLOG->WARN("OTIAS: Warning: found no optimal path");
+        $ALGOLOG->WARN("%f  OTIAS: Warning: found no optimal path"
+                           , sub {return time() - $start_time; } );
     }
 
  success:
@@ -916,9 +917,9 @@ sub get_sock_sendbuffer_fill
     # Get sock send buffer fill
     my $ioctl_binary_return_buffer = "";
     my $sock_sendbuffer_fill;
-    my $retval = ioctl($sock, SIOCOUTQ, $ioctl_binary_return_buffer); 
+    my $retval = ioctl($sock, SIOCOUTQ, $ioctl_binary_return_buffer);
     if (!defined($retval)) {
-        $ALGOLOG->ERR($!);
+        $ALGOLOG->ERR("%f  $!", sub { return time() - $start_time; } );
     } else {
         # say(unpack("i", $ioctl_binary_return_buffer));
         $sock_sendbuffer_fill = unpack("i", $ioctl_binary_return_buffer);
@@ -933,10 +934,10 @@ sub send_scheduler_afmt_noqueue_drop
     my $opti_sock_id = afmt_noqueue_base($packet, \&afmt_base_adaptivity);
 
     if ( $opti_sock_id < 0 ) { # found no usable sock: drop packet
-        $ALGOLOG->NOTICE("AFMT_NOQUEUE_DROP: had to drop packet");
+        $ALGOLOG->NOTICE("%f  AFMT_NOQUEUE_DROP: had to drop packet", sub { return time() - $start_time; });
         return -1;
     } else { # found opti sock: send packet
-        $ALGOLOG->NOTICE("AFMT_NOQUEUE_DROP: sent a packet via $opti_sock_id");
+        $ALGOLOG->NOTICE("%f  AFMT_NOQUEUE_DROP: sent a packet via $opti_sock_id", sub { return time() - $start_time; });
         $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $packet );
     }
 }
@@ -963,7 +964,7 @@ sub send_scheduler_afmt_noqueue_busy_wait
         # $packet is not reset i.e. stays the same because it's a state variable
         return -1;
     } else {                    # found opti sock: send packet
-        $ALGOLOG->NOTICE("AFMT_NOQUEUE_busy_wait: sent a packet via $opti_sock_id");
+        $ALGOLOG->NOTICE("%f  AFMT_NOQUEUE_busy_wait: sent a packet via $opti_sock_id", sub { return time() - $start_time; });
         $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $packet );
         $packet = -2; # reset $packet
         return 1;
@@ -988,11 +989,11 @@ sub send_scheduler_llfmt_noqueue_busy_wait
         $packet = -2; # reset $packet
         return 1; # positive because technically one packet was succesfully processed
     } elsif ( $opti_sock_id < 0 ) { # found no usable sock
-        $ALGOLOG->NOTICE("AFMT_NOQUEUE_busy_wait: couldn't send, return busy loop");
+        $ALGOLOG->NOTICE("%f  AFMT_NOQUEUE_busy_wait: couldn't send, return busy loop", sub { return time() - $start_time; });
         # $packet is not reset i.e. stays the same because it's a state variable
         return -1;
     } else {                    # found opti sock: send packet
-        $ALGOLOG->NOTICE("AFMT_NOQUEUE_busy_wait: sent a packet via $opti_sock_id");
+        $ALGOLOG->NOTICE("%f  AFMT_NOQUEUE_busy_wait: sent a packet via $opti_sock_id", sub { return time() - $start_time; });
         $poe_kernel->call( $subtun_sessions[$opti_sock_id], "on_data_to_send", $packet );
         $packet = -2; # reset $packet
         return 1;
@@ -1015,7 +1016,8 @@ sub afmt_noqueue_base
     my $subtun_count = @subtun_sessions;
     # When no subtunnels available, don't work and return
     if ( $subtun_count == 0) {
-        $ALGOLOG->WARN("afmt_base called with no subtunnels. not sending, dropping");
+        $ALGOLOG->WARN("%f  afmt_base called with no subtunnels. not sending, dropping",
+                   sub { return time() - $start_time; });
         return -1;
     }
 
@@ -1023,7 +1025,7 @@ sub afmt_noqueue_base
     my $free_sockets_ref = get_free_sockets();
 
     if ( @$free_sockets_ref == 0) {
-        $ALGOLOG->NOTICE("afmt_noqueue_base: Aborting: no free socks");
+        $ALGOLOG->NOTICE("%f  afmt_noqueue_base: Aborting: no free socks", sub { return time() - $start_time; });
         return -2;
     }
 
@@ -1062,7 +1064,7 @@ sub afmt_noqueue_base
         }
 
         if ( 0 == @applicable_subtun_hashes) {
-            $ALGOLOG->NOTICE("afmt_base: got >= 1 free sockets, but all would overtake, not sending");
+            $ALGOLOG->NOTICE("%f  afmt_base: got >= 1 free sockets, but all would overtake, not sending", sub { return time() - $start_time; });
             return -4;
         }
 
@@ -1071,7 +1073,7 @@ sub afmt_noqueue_base
         # also updates the real array in %flow_table
         $value_array->[0] = $opti_sock_id;
         $value_array->[1] = time();
-        $ALGOLOG->NOTICE("send_scheduler_afmt_fl(): continuing existing flow $flow_id , using sock id: $opti_sock_id");
+        $ALGOLOG->NOTICE("%f  send_scheduler_afmt_fl(): continuing existing flow $flow_id , using sock id: $opti_sock_id", sub { return time() - $start_time; });
         return $opti_sock_id;
 
     } else { # packet starts a new flow
@@ -1081,7 +1083,7 @@ sub afmt_noqueue_base
         $value_array = [$opti_sock_id, time()];
         $flow_table{$flow_id} = $value_array;
 
-        $ALGOLOG->NOTICE("send_sched_afmt(): Started new flow send through sock id: $opti_sock_id");
+        $ALGOLOG->NOTICE("%f  send_sched_afmt(): Started new flow send through sock id: $opti_sock_id", sub { return time() - $start_time; });
         return $opti_sock_id;
     }
 }
@@ -1097,7 +1099,7 @@ sub llfmt_ll_selector
     if ( 1 == @$sock_hashes_ref) {
         # if only one subtunnel is applicable (no overtaking/reordering produced)
         # just return that one
-        $ALGOLOG->INFO("llfmt_ll_selector(): only got 1 good subtun_hash as input return that");
+        $ALGOLOG->INFO("%f  llfmt_ll_selector(): only got 1 good subtun_hash as input return that", sub { return time() - $start_time; });
         return $sock_hashes_ref->[0]->{sock_id};
     }
 
@@ -1109,11 +1111,11 @@ sub llfmt_ll_selector
     }
 
     if ( $opti_sock_id == -1) { # found no opti sock
-        $ALGOLOG->WARN("llfmt_ll_selector: Found no usable socket/subtun");
+        $ALGOLOG->WARN("%f  llfmt_ll_selector: Found no usable socket/subtun", sub { return time() - $start_time; });
         return -1;
     }
 
-    $ALGOLOG->INFO("llfmt_ll_selector: selected $opti_sock_id, with srtt: $minimal_srtt");
+    $ALGOLOG->INFO("%f  llfmt_ll_selector: selected $opti_sock_id, with srtt: $minimal_srtt", sub { return time() - $start_time; });
     return $opti_sock_id;
 }
 
@@ -1126,7 +1128,7 @@ sub afmt_base_adaptivity
     if ( 1 == @$sock_hashes_ref) {
         # if only one subtunnel is applicable (no overtaking/reordering produced)
         # just return that one
-        $ALGOLOG->INFO("afmt_base_adaptivity(): only got 1 good subtun_hash as input return that");
+        $ALGOLOG->INFO("%f  afmt_base_adaptivity(): only got 1 good subtun_hash as input return that", sub { return time() - $start_time; });
         return $sock_hashes_ref->[0]->{sock_id};
     }
 
@@ -1134,18 +1136,18 @@ sub afmt_base_adaptivity
         my $weighted_free_slots = log( ($subtun_hash->{send_rate} - $subtun_hash->{in_flight}) )
             / ($subtun_hash->{srtt} ||  10_000);
 
-        $ALGOLOG->NOTICE("afmt_base_adaptivity(): sock_id: $subtun_hash->{sock_id}"
+        $ALGOLOG->NOTICE("%f  afmt_base_adaptivity(): sock_id: $subtun_hash->{sock_id}"
                              . " | srtt:" . $subtun_hash->{srtt} . "us"
                              . " | cwnd:" . ($subtun_hash->{send_rate})
                              . " | in flight packets: $subtun_hash->{in_flight}"
-                             . " | resulting weighted_free_slots: $weighted_free_slots");
+                             . " | resulting weighted_free_slots: $weighted_free_slots", sub { return time() - $start_time; });
 
         if ( $weighted_free_slots > $max_weighted_free_slots ) {
             $max_weighted_free_slots = $weighted_free_slots;
             $opti_sock_id = $subtun_hash->{sock_id};
         }
     }
-    $ALGOLOG->NOTICE("afmt_base_adaptivty: selected $opti_sock_id, with weighted free slots: $max_weighted_free_slots");
+    $ALGOLOG->NOTICE("%f  afmt_base_adaptivty: selected $opti_sock_id, with weighted free slots: $max_weighted_free_slots", sub { return time() - $start_time; });
     return $opti_sock_id;
 }
 
@@ -1334,8 +1336,10 @@ sub dccp_subtun_recv
             # pack()/ unpack() here and above for the header bytes
 
             my $actually_sent_bytes =  $_[HEAP]->{subtun_sock}->syswrite($probe_response);
-            $TXRXLOG->ERR("dccp_subtun_minimal_send(): socket error: errno: $!")
-                if (!defined($actually_sent_bytes));
+            if ((!defined($actually_sent_bytes))) { # syscall failed
+                $TXRXLOG->ERR("%f  dccp_subtun_minimal_send(): socket error: errno: $!"
+                              , sub { return time() - $start_time; });
+            }
 
             # no further payload processing, just return
             return 1;
@@ -1347,7 +1351,7 @@ sub dccp_subtun_recv
             # nothing to do here, just continue payload processing
             # header is already striped from packet
         } else {
-            $TXRXLOG->WARN("Got packet with broken header");
+            $TXRXLOG->WARN("%f  Got packet with broken header", sub { return time() - $start_time; });
             # die();
         }
     }
@@ -1383,7 +1387,10 @@ sub dccp_subtun_minimal_send
     }
 
     my $actually_sent_bytes =  $_[HEAP]->{subtun_sock}->syswrite($payload);
-    $TXRXLOG->ERR("dccp_subtun_minimal_send(): socket error: errno: $!") if (!defined($actually_sent_bytes));
+    if ((!defined($actually_sent_bytes))) {
+        $TXRXLOG->ERR("%f  dccp_subtun_minimal_send(): socket error: errno: $!"
+                          , sub { return time() - $start_time; });
+    }
     # my $packet_size = bytes::length($payload)
     # $TXRXLOG->DEBUG("Sent payload through DCCP subtunnel $actually_sent_bytes of $packet_size bytes");
 }
@@ -1560,7 +1567,10 @@ sub send_keepalive
     my $sock_id = $_[ARG0];
     my $keepalive_packet = "a" x 100;
     my $actually_sent_bytes =  $_[HEAP]->{subtun_sock}->syswrite($keepalive_packet);
-    $TXRXLOG->ERR("dccp_subtun_minimal_send(): socket error: errno: $!") if (!defined($actually_sent_bytes));
+    if ((!defined($actually_sent_bytes))) {
+        $TXRXLOG->ERR("%f  dccp_subtun_minimal_send(): socket error: errno: $!"
+                          , sub { return time() - $start_time; });
+    }
     $CONLOG->INFO("[KEEPALIVE] %f  Sent a keepalive on subtunnel $sock_id",
                   sub {return time() - $start_time; # rel_time
                    });
