@@ -24,7 +24,7 @@ $other_ctx_prefix "timeout $((runtime+16)) ~/Coding/Reinhard-VPN/minimal_experim
             --lcon=INFO  --lalgo=NOTICE  $hdr_opt --lsci=NOTICE  > /tmp/tentry_logs" &
 sleep 3
 $other_ctx_prefix "$probe_cmd $udp_flag  -t $runtime $bandwith_opt  \
-		            -c 192.168.65.2 -i 1 -e -f m  -P $flowcount  > /tmp/iperf_tentry.log" &
+		            -c 192.168.65.2 -i $iperf_report_interval -e -f m  -P $flowcount  > /tmp/iperf_tentry.log" &
 
 sleep $((runtime+17))
 ## ----- here we block for 12 seconds, after that
