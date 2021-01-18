@@ -9,10 +9,10 @@
 probe_cmd=iperf
 iperf_report_interval=1
 
-runtime=20
-warmup_seconds=05
+runtime=70
+warmup_seconds=10
 flowcount=4
-run=r1
+run=r6_newtimeinlog
 udp_flag= #"-u"
 bandwith_opt= #"-b3m"
 hdr_opt= #"-hdr"
@@ -21,7 +21,7 @@ ig0_rtt=50    # in ms
 ig0_rate=8mbit
 
 ig1_rtt=70
-ig1_rate=16mbit
+ig1_rate=8mbit
 
 ig2_rtt=50
 ig2_rate=8mbit
