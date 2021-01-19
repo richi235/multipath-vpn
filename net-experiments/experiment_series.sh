@@ -159,6 +159,10 @@ plot '<grep -v -e "^\[SUM\]" -e "0\.0000-[1-9][0-9]"  afmt_noqueue_drop/iperf_te
 , '<grep -v -e "^\[SUM\]" -e "0\.0000-[1-9][0-9]"  llfmt_noqueue_busy_wait/iperf_tentry.log |  grep -P -o "( \d+\.\d+)(?= Mbits/sec )"' skip $rls_to_ignore using (5.5):(column(1)) title 'llfmt\_noqueue\_busy\_wait'
 PLOT
 
+# also create the fancy publication diagrams
+gnuplot ../throughput_publication.plt  ../SRTTs_boxplot_publication.plt
+
+
 # Write a file with our path config
 echo "ig0:" 		   		> path_config
 ssh root@ig0 "ip r ; and tc qdisc ls"   >> path_config
