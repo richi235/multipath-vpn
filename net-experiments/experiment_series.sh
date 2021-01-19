@@ -9,22 +9,6 @@
 probe_cmd=iperf
 iperf_report_interval=1
 
-runtime=70
-warmup_seconds=10
-flowcount=4
-run=r6_newtimeinlog
-udp_flag= #"-u"
-bandwith_opt= #"-b3m"
-hdr_opt= #"-hdr"
-
-ig0_rtt=50    # in ms
-ig0_rate=8mbit
-
-ig1_rtt=70
-ig1_rate=8mbit
-
-ig2_rtt=50
-ig2_rate=8mbit
 
 echo "Setting path characteristics on all subtunnel paths..."
 # ig0
@@ -41,7 +25,7 @@ ssh root@ig2 "tc qdisc change dev eth0.23 root netem delay $((ig2_rtt/2))ms rate
 
 echo "Done!"
 
-series_dir="series_${runtime}s_${udp_flag}_${bandwith_opt}_${flowcount}flows_${run}_${hdr_opt}_2subtun__ig1:${ig1_rtt}ms,${ig1_rate}__ig2:${ig2_rtt}ms,${ig2_rate}"
+series_dir="${investigation_prefix}:series_${runtime}s_${udp_flag}_${bandwith_opt}_${flowcount}flows_${run}_${hdr_opt}_2subtun__ig1:${ig1_rtt}ms,${ig1_rate}__ig2:${ig2_rtt}ms,${ig2_rate}"
 
 mkdir $series_dir
 
