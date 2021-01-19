@@ -23,9 +23,14 @@ ssh root@ig1 "tc qdisc change dev eth0.22 root netem delay $((ig1_rtt/2))ms rate
 ssh root@ig2 "tc qdisc change dev eth0.13 root netem delay $((ig2_rtt/2))ms rate $ig2_rate"
 ssh root@ig2 "tc qdisc change dev eth0.23 root netem delay $((ig2_rtt/2))ms rate $ig2_rate"
 
+ssh root@tentry " cd /proc/sys/net/dccp/default ; echo $CCID > rx_ccid ; echo $CCID > tx_ccid"
+
 echo "Done!"
 
-series_dir="${investigation_prefix}:series_${runtime}s_${udp_flag}_${bandwith_opt}_${flowcount}flows_${run}_${hdr_opt}_2subtun__ig1:${ig1_rtt}ms,${ig1_rate}__ig2:${ig2_rtt}ms,${ig2_rate}"
+echo $CCID > /proc/sys/net/dccp/default/rx_ccid ; echo $CCID > /proc/sys/net/dccp/default/tx_ccid
+
+
+series_dir="${investigation_prefix}:series_${runtime}s_${udp_flag}_${bandwith_opt}_${flowcount}flows_${run}_${hdr_opt}_2subtun__ig1:${ig1_rtt}ms,${ig1_rate}__ig2:${ig2_rtt}ms,${ig2_rate}_$CCID"
 
 mkdir $series_dir
 

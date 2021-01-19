@@ -12,7 +12,7 @@ tentry_ssh_dest="root@tentry"
 other_ctx_prefix="ssh $tentry_ssh_dest"
 
 timeout $((runtime+18)) ../minimal_experiment_prototype.pl  \
-              --sched=$sched_algo $hdr_opt --ccid=2 > /tmp/texit_logs  &
+              --sched=$sched_algo $hdr_opt --ccid=$CCID > /tmp/texit_logs  &
 sleep 1
 
 #timeout $((runtime+5)) tcpdump -i tun0 -w afmt_tun0_trace.pcap "dst 192.168.65.2" &
@@ -20,7 +20,7 @@ sleep 1
 #$probe_cmd $udp_flag  -s -i 0.1 --reportstyle C > iperf_server_output.csv &
 
 $other_ctx_prefix "timeout $((runtime+16)) ~/Coding/Reinhard-VPN/minimal_experiment_prototype.pl \
-             --sched=$sched_algo --ccid=2 \
+             --sched=$sched_algo --ccid=$CCID \
             --lcon=INFO  --lalgo=NOTICE  $hdr_opt --lsci=NOTICE  > /tmp/tentry_logs" &
 sleep 3
 $other_ctx_prefix "$probe_cmd $udp_flag  -t $runtime $bandwith_opt  \

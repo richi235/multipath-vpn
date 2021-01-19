@@ -35,6 +35,7 @@ flowcount=4
 udp_flag= #"-u"
 bandwith_opt= #"-b3m"
 hdr_opt= #"-hdr"
+CCID=2
 
 ig0_rtt=50    # in ms
 ig0_rate=8mbit
