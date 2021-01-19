@@ -63,3 +63,4 @@ mkdir $investigation_prefix
 mv ${investigation_prefix}:series*  $investigation_prefix
 cp "$(readlink -f $0)" $investigation_prefix # archive this script too, as reference
 
+echo -e "\e[42;1mInvestigation $investigation_prefix finished \e[0m"
