@@ -1153,24 +1153,22 @@ sub afmt_base_adaptivity
 
 sub send_scheduler_rr
 {
-    # we only get 1 parameter: a network packet ~1500 bytes
-    # we're not using shift but $_[0] (see below, in the $kernel->call(...))
-    # to avoid copying the full 1500 bytes
-
     # State is same as static for local variables in C
     # Value of variables is persistent between function calls, because stored on the heap
     state $current_subtun_id = 0;
     my $subtun_count = @subtun_sessions;
 
     if ( $subtun_count == 0) {
-        say("  send_scheduler_rr called with no subtunnels???");
+        $ALGOLOG->WARN("send_scheduler_rr called with no subtunnels???");
         return;
     }
 
-    $poe_kernel->call( $subtun_sessions[$current_subtun_id], "on_data_to_send", $_[0] );
+    $ALGOLOG->NOTICE("RR: chosen socket: $current_subtun_id");
+    sysread($_[HEAP]->{tun_device}, my $packet , TUN_MAX_FRAME );
+    $poe_kernel->call( $subtun_sessions[$current_subtun_id], "on_data_to_send", $packet );
 
     $current_subtun_id = ($current_subtun_id+1) % $subtun_count;
-    return;
+    return 1;
 }
 
 # Receives from a subtunnel and puts into tun/tap device
