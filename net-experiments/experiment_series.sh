@@ -171,3 +171,5 @@ scp root@tentry:/etc/multivpn.cfg tentry_multivpn.cfg
 cp  /etc/multivpn.cfg texit_multivpn.cfg
 
 echo -e "\e[31;1mSeries dir: $series_dir\e[0m"
+
+cd .. # necesarry since were sourced by multiple_series.sh so it can continue where it was
