@@ -16,13 +16,22 @@
 #  - wie viele tunnels wir benutzen
 
 
-# TODO: noch entscheiden wie ich das sinnvoll mit prefixes und unterordnen mache
+# [90%]: noch entscheiden wie ich das sinnvoll mit prefixes und unterordnen mache
+# TODO entscheiden was ich mit run variable mache
+# TODO [B] evtl. alles in funkitonen packen
+# TODO [B] überlegen wie man fancy wiederholungen macht
+# TODO [B] überlegen wie man fancy verschachtelete ordnerstruktur bekommt
+# TODO [B] überlegen wie man overall uhr/progress info kriegt
+# TODO [B] überlegen wie man CCID ändern kann
+# TODO [B] überlegen wie man subtunnel anzahl ändern kann
+#    - evtl. eigenes script auf tentry das mpvpn config ändert (3. subtunnel toggled), dann hier callen
 
 investigation_prefix=rtt_asym_1
 
 runtime=70
 warmup_seconds=10
 flowcount=4
+# run=r6_newtimeinlog
 udp_flag= #"-u"
 bandwith_opt= #"-b3m"
 hdr_opt= #"-hdr"
