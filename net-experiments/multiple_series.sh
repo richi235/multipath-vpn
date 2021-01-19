@@ -52,5 +52,5 @@ source ./experiment_series.sh
 
 mkdir $investigation_prefix
 mv ${investigation_prefix}:series*  $investigation_prefix
-cp "$(readlink -f $0)" $investigation_prefix #copy this script too, as reference
+cp "$(readlink -f $0)" $investigation_prefix # archive this script too, as reference
 
