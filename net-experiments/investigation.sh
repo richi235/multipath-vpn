@@ -26,7 +26,7 @@
 # TODO [B] überlegen wie man subtunnel anzahl ändern kann
 #    - evtl. eigenes script auf tentry das mpvpn config ändert (3. subtunnel toggled), dann hier callen
 
-investigation_prefix=rtt_asym_1
+investigation_prefix=rtt_asym_2
 
 runtime=70
 warmup_seconds=10
@@ -58,6 +58,14 @@ ig1_rtt=100
 ig2_rtt=50
 
 source ./experiment_series.sh
+
+ig1_rtt=150
+ig2_rtt=50
+
+source ./experiment_series.sh
+
+
+
 
 mkdir $investigation_prefix
 mv ${investigation_prefix}:series*  $investigation_prefix
