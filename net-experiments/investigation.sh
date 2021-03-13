@@ -26,11 +26,11 @@
 # TODO [B] überlegen wie man subtunnel anzahl ändern kann
 #    - evtl. eigenes script auf tentry das mpvpn config ändert (3. subtunnel toggled), dann hier callen
 
-investigation_prefix=rtt_asym_2
+investigation_prefix=all_asym_5flows_repeat
 
 runtime=70
 warmup_seconds=10
-flowcount=4
+flowcount=5
 # run=r6_newtimeinlog
 udp_flag= #"-u"
 bandwith_opt= #"-b3m"
@@ -43,26 +43,20 @@ ig0_rate=8mbit
 ig1_rtt=50
 ig1_rate=8mbit
 
-ig2_rtt=50
-ig2_rate=8mbit
+ig2_rtt=70
+ig2_rate=16mbit
 
-
+run=r1
+source ./experiment_series.sh
+run=r2
+source ./experiment_series.sh
+run=r3
+source ./experiment_series.sh
+run=r4
 source ./experiment_series.sh
 
-
-ig1_rtt=70
-ig2_rtt=50
-
-source ./experiment_series.sh
-
-ig1_rtt=100
-ig2_rtt=50
-
-source ./experiment_series.sh
-
-ig1_rtt=150
-ig2_rtt=50
-
+run=r1
+flowcount=7
 source ./experiment_series.sh
 
 
