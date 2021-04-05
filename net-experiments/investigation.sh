@@ -26,6 +26,9 @@
 # TODO [B] überlegen wie man subtunnel anzahl ändern kann
 #    - evtl. eigenes script auf tentry das mpvpn config ändert (3. subtunnel toggled), dann hier callen
 
+#####################################
+## PART I: Define global Variables ##
+#####################################
 investigation_prefix=all_asym_5flows_repeat
 probe_cmd=iperf
 iperf_report_interval=1
@@ -48,6 +51,9 @@ ig1_rate=8mbit
 ig2_rtt=70
 ig2_rate=16mbit
 
+###############################
+## PART II: Run the serieses ##
+###############################
 run=r1
 source ./experiment_series.sh
 run=r2
@@ -56,16 +62,18 @@ run=r3
 source ./experiment_series.sh
 run=r4
 source ./experiment_series.sh
-
 run=r1
 flowcount=7
 source ./experiment_series.sh
 
-
-
-
-mkdir $investigation_prefix
-mv ${investigation_prefix}:series*  $investigation_prefix
-cp "$(readlink -f $0)" $investigation_prefix # archive this script too, as reference
-
-echo -e "\e[42;1mInvestigation $investigation_prefix finished \e[0m"
+###############################
+## PART III: Cleanup         ##
+###############################
+after_investigation_cleanup()
+{
+    mkdir $investigation_prefix
+    mv ${investigation_prefix}:series*  $investigation_prefix
+    cp "$(readlink -f $0)" $investigation_prefix # archive this script too, as reference
+    echo -e "\e[42;1mInvestigation $investigation_prefix finished \e[0m"
+}
+after_investigation_cleanup
