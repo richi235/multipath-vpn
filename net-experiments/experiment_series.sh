@@ -88,81 +88,90 @@ tail -n 4 */iperf_tentry.log > iperf_client_sums
 rls_to_ignore=$(( (warmup_seconds/iperf_report_interval) * flowcount))
 echo "rls_to_ignore: $rls_to_ignore"
 
-# all_SRTT_boxplots.plt
-gnuplot  <<PLOT
-# This generates boxplot diagramms of the RTTs directly from the iperf output files
-set terminal pdf
-set output "SRTTs.pdf"
-set title "SRTTs"
-set ylabel "ms"
-unset xlabel
+plot_SRTT_boxplots()
+{
+    # all_SRTT_boxplots.plt
+    gnuplot  <<PLOT
+    # This generates boxplot diagramms of the RTTs directly from the iperf output files
+    set terminal pdf
+    set output "SRTTs.pdf"
+    set title "SRTTs"
+    set ylabel "ms"
+    unset xlabel
 
-set style fill solid 0.5 border -1
-set style data boxplot
-set style boxplot nooutliers
-#set boxwidth  0.5
+    set style fill solid 0.5 border -1
+    set style data boxplot
+    set style boxplot nooutliers
+    #set boxwidth  0.5
 
-plot '<grep -P -o "(?<=K/)(\d*)(?= us )" afmt_noqueue_drop/iperf_tentry.log' skip $rls_to_ignore using (0.5):(column(1)/1000) title 'afmt\_noqueue\_drop' \
-, '<grep -P -o "(?<=K/)(\d*)(?= us )" afmt_fl/iperf_tentry.log' skip $rls_to_ignore using (1.5):(column(1)/1000) title 'afmt\_fl'\
-, '<grep -P -o "(?<=K/)(\d*)(?= us )" otias_sock_drop/iperf_tentry.log' skip $rls_to_ignore using (2.5):(column(1)/1000) title 'otias\_sock\_drop' \
-, '<grep -P -o "(?<=K/)(\d*)(?= us )" srtt_min_busy_wait/iperf_tentry.log' skip $rls_to_ignore using (3.5):(column(1)/1000) title 'srtt\_min\_busy\_wait' \
-, '<grep -P -o "(?<=K/)(\d*)(?= us )" afmt_noqueue_busy_wait/iperf_tentry.log' skip $rls_to_ignore using (4.5):(column(1)/1000) title 'afmt\_noqueue\_busy\_wait' \
-, '<grep -P -o "(?<=K/)(\d*)(?= us )" llfmt_noqueue_busy_wait/iperf_tentry.log' skip $rls_to_ignore using (5.5):(column(1)/1000) title 'llfmt\_noqueue\_busy\_wait'
+    plot '<grep -P -o "(?<=K/)(\d*)(?= us )" afmt_noqueue_drop/iperf_tentry.log' skip $rls_to_ignore using (0.5):(column(1)/1000) title 'afmt\_noqueue\_drop' \
+    , '<grep -P -o "(?<=K/)(\d*)(?= us )" afmt_fl/iperf_tentry.log' skip $rls_to_ignore using (1.5):(column(1)/1000) title 'afmt\_fl'\
+    , '<grep -P -o "(?<=K/)(\d*)(?= us )" otias_sock_drop/iperf_tentry.log' skip $rls_to_ignore using (2.5):(column(1)/1000) title 'otias\_sock\_drop' \
+    , '<grep -P -o "(?<=K/)(\d*)(?= us )" srtt_min_busy_wait/iperf_tentry.log' skip $rls_to_ignore using (3.5):(column(1)/1000) title 'srtt\_min\_busy\_wait' \
+    , '<grep -P -o "(?<=K/)(\d*)(?= us )" afmt_noqueue_busy_wait/iperf_tentry.log' skip $rls_to_ignore using (4.5):(column(1)/1000) title 'afmt\_noqueue\_busy\_wait' \
+    , '<grep -P -o "(?<=K/)(\d*)(?= us )" llfmt_noqueue_busy_wait/iperf_tentry.log' skip $rls_to_ignore using (5.5):(column(1)/1000) title 'llfmt\_noqueue\_busy\_wait'
 
-# about: (0.5):(column(1)/1000)
-# the 0.5 is the x value where this boxplot box will be placed
-# column(1) is the column of the data file used , 0 would be the record number
-PLOT
+    # about: (0.5):(column(1)/1000)
+    # the 0.5 is the x value where this boxplot box will be placed
+    # column(1) is the column of the data file used , 0 would be the record number
+    PLOT
+}
 
-# Retransmissions.plt
-gnuplot  <<PLOT
-# This generates boxplot diagramms of the Retransmissions/Retries directly from the iperf output files
-set terminal pdf
-set output "Retransmissions.pdf"
-set title "Retransmissions"
-set ylabel "count"
-unset xlabel
+plot_retransmissions()
+{
+    # Retransmissions.plt
+    gnuplot  <<PLOT
+    # This generates boxplot diagramms of the Retransmissions/Retries directly from the iperf output files
+    set terminal pdf
+    set output "Retransmissions.pdf"
+    set title "Retransmissions"
+    set ylabel "count"
+    unset xlabel
 
-set style fill solid 0.5 border -1
-set style data boxplot
-set style boxplot nooutliers
-#set boxwidth  0.5
+    set style fill solid 0.5 border -1
+    set style data boxplot
+    set style boxplot nooutliers
+    #set boxwidth  0.5
 
-plot '<grep -P -o  "\d+(?=\s+\d*K/\d* us )"  afmt_noqueue_drop/iperf_tentry.log' skip $rls_to_ignore using (0.5):(column(1)/1000) title 'afmt\_noqueue\_drop' \
-, '<grep -P -o  "\d+(?=\s+\d*K/\d* us )"  afmt_fl/iperf_tentry.log' skip $rls_to_ignore using (1.5):(column(1)/1000) title 'afmt\_fl'\
-, '<grep -P -o  "\d+(?=\s+\d*K/\d* us )"  otias_sock_drop/iperf_tentry.log' skip $rls_to_ignore using (2.5):(column(1)/1000) title 'otias\_sock\_drop' \
-, '<grep -P -o  "\d+(?=\s+\d*K/\d* us )"  srtt_min_busy_wait/iperf_tentry.log' skip $rls_to_ignore using (3.5):(column(1)/1000) title 'srtt\_min\_busy\_wait' \
-, '<grep -P -o  "\d+(?=\s+\d*K/\d* us )"  afmt_noqueue_busy_wait/iperf_tentry.log' skip $rls_to_ignore using (4.5):(column(1)/1000) title 'afmt\_noqueue\_busy\_wait' \
-, '<grep -P -o  "\d+(?=\s+\d*K/\d* us )"  llfmt_noqueue_busy_wait/iperf_tentry.log' skip $rls_to_ignore using (5.5):(column(1)/1000) title 'llfmt\_noqueue\_busy\_wait'
+    plot '<grep -P -o  "\d+(?=\s+\d*K/\d* us )"  afmt_noqueue_drop/iperf_tentry.log' skip $rls_to_ignore using (0.5):(column(1)/1000) title 'afmt\_noqueue\_drop' \
+    , '<grep -P -o  "\d+(?=\s+\d*K/\d* us )"  afmt_fl/iperf_tentry.log' skip $rls_to_ignore using (1.5):(column(1)/1000) title 'afmt\_fl'\
+    , '<grep -P -o  "\d+(?=\s+\d*K/\d* us )"  otias_sock_drop/iperf_tentry.log' skip $rls_to_ignore using (2.5):(column(1)/1000) title 'otias\_sock\_drop' \
+    , '<grep -P -o  "\d+(?=\s+\d*K/\d* us )"  srtt_min_busy_wait/iperf_tentry.log' skip $rls_to_ignore using (3.5):(column(1)/1000) title 'srtt\_min\_busy\_wait' \
+    , '<grep -P -o  "\d+(?=\s+\d*K/\d* us )"  afmt_noqueue_busy_wait/iperf_tentry.log' skip $rls_to_ignore using (4.5):(column(1)/1000) title 'afmt\_noqueue\_busy\_wait' \
+    , '<grep -P -o  "\d+(?=\s+\d*K/\d* us )"  llfmt_noqueue_busy_wait/iperf_tentry.log' skip $rls_to_ignore using (5.5):(column(1)/1000) title 'llfmt\_noqueue\_busy\_wait'
 
-# about: (0.5):(column(1)/1000)
-# the 0.5 is the x value where this boxplot box will be placed
-# column(1) is the column of the data file used , 0 would be the record number
-PLOT
+    # about: (0.5):(column(1)/1000)
+    # the 0.5 is the x value where this boxplot box will be placed
+    # column(1) is the column of the data file used , 0 would be the record number
+    PLOT
+}
 
+plot_throughput_intervals()
+{
+    # all_throughput_intvervals_boxplots.plt
+    gnuplot  <<PLOT
+    # This generates a boxplot diagrmm of the Throughputs per 0.1s interval directly from the iperf output
 
-# all_throughput_intvervals_boxplots.plt
-gnuplot  <<PLOT
-# This generates a boxplot diagrmm of the Throughputs per 0.1s interval directly from the iperf output
+    set terminal pdf
+    set output "Throughputs_per_interval.pdf"
+    set title "Throughputs per interval"
+    set ylabel "Mbit/s"
+    unset xlabel
 
-set terminal pdf
-set output "Throughputs_per_interval.pdf"
-set title "Throughputs per interval"
-set ylabel "Mbit/s"
-unset xlabel
+    set style fill solid 0.5 border -1
+    set style data boxplot
+    set style boxplot nooutliers
+    #set boxwidth  0.5
 
-set style fill solid 0.5 border -1
-set style data boxplot
-set style boxplot nooutliers
-#set boxwidth  0.5
+    plot '<grep -v -e "^\[SUM\]" -e "0\.0000-[1-9][0-9]"  afmt_noqueue_drop/iperf_tentry.log |  grep -P -o "( \d+\.\d+)(?= Mbits/sec )"' skip $rls_to_ignore using (0.5):(column(1)) title 'afmt\_noqueue\_drop' \
+    , '<grep -v -e "^\[SUM\]" -e "0\.0000-[1-9][0-9]"  afmt_fl/iperf_tentry.log |  grep -P -o "( \d+\.\d+)(?= Mbits/sec )"' skip $rls_to_ignore using (1.5):(column(1)) title 'afmt\_fl'\
+    , '<grep -v -e "^\[SUM\]" -e "0\.0000-[1-9][0-9]"  otias_sock_drop/iperf_tentry.log |  grep -P -o "( \d+\.\d+)(?= Mbits/sec )"' skip $rls_to_ignore using (2.5):(column(1)) title 'otias\_sock\_drop' \
+    , '<grep -v -e "^\[SUM\]" -e "0\.0000-[1-9][0-9]"  srtt_min_busy_wait/iperf_tentry.log |  grep -P -o "( \d+\.\d+)(?= Mbits/sec )"' skip $rls_to_ignore using (3.5):(column(1)) title 'srtt\_min\_busy\_wait' \
+    , '<grep -v -e "^\[SUM\]" -e "0\.0000-[1-9][0-9]"  afmt_noqueue_busy_wait/iperf_tentry.log |  grep -P -o "( \d+\.\d+)(?= Mbits/sec )"' skip $rls_to_ignore using (4.5):(column(1)) title 'afmt\_noqueue\_busy\_wait' \
+    , '<grep -v -e "^\[SUM\]" -e "0\.0000-[1-9][0-9]"  llfmt_noqueue_busy_wait/iperf_tentry.log |  grep -P -o "( \d+\.\d+)(?= Mbits/sec )"' skip $rls_to_ignore using (5.5):(column(1)) title 'llfmt\_noqueue\_busy\_wait'
+    PLOT
+}
 
-plot '<grep -v -e "^\[SUM\]" -e "0\.0000-[1-9][0-9]"  afmt_noqueue_drop/iperf_tentry.log |  grep -P -o "( \d+\.\d+)(?= Mbits/sec )"' skip $rls_to_ignore using (0.5):(column(1)) title 'afmt\_noqueue\_drop' \
-, '<grep -v -e "^\[SUM\]" -e "0\.0000-[1-9][0-9]"  afmt_fl/iperf_tentry.log |  grep -P -o "( \d+\.\d+)(?= Mbits/sec )"' skip $rls_to_ignore using (1.5):(column(1)) title 'afmt\_fl'\
-, '<grep -v -e "^\[SUM\]" -e "0\.0000-[1-9][0-9]"  otias_sock_drop/iperf_tentry.log |  grep -P -o "( \d+\.\d+)(?= Mbits/sec )"' skip $rls_to_ignore using (2.5):(column(1)) title 'otias\_sock\_drop' \
-, '<grep -v -e "^\[SUM\]" -e "0\.0000-[1-9][0-9]"  srtt_min_busy_wait/iperf_tentry.log |  grep -P -o "( \d+\.\d+)(?= Mbits/sec )"' skip $rls_to_ignore using (3.5):(column(1)) title 'srtt\_min\_busy\_wait' \
-, '<grep -v -e "^\[SUM\]" -e "0\.0000-[1-9][0-9]"  afmt_noqueue_busy_wait/iperf_tentry.log |  grep -P -o "( \d+\.\d+)(?= Mbits/sec )"' skip $rls_to_ignore using (4.5):(column(1)) title 'afmt\_noqueue\_busy\_wait' \
-, '<grep -v -e "^\[SUM\]" -e "0\.0000-[1-9][0-9]"  llfmt_noqueue_busy_wait/iperf_tentry.log |  grep -P -o "( \d+\.\d+)(?= Mbits/sec )"' skip $rls_to_ignore using (5.5):(column(1)) title 'llfmt\_noqueue\_busy\_wait'
-PLOT
 
 # also create the fancy publication diagrams
 gnuplot ../throughput_publication.plt  ../SRTTs_boxplot_publication.plt
