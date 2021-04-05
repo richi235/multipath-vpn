@@ -33,7 +33,7 @@ mkdir $series_dir
 
 $probe_cmd  -s -i 0.1  > iperf_server_output.log  &
 
-run_single_experiments()
+run_series()
 {
     sched_algo=llfmt_noqueue_busy_wait  
     echo -en "\e[32;1m[1/6]  \e[0m"
@@ -63,14 +63,18 @@ run_single_experiments()
     #sched_algo=rr
     #source ./run_experiment.sh
 }
-run_single_experiments
+run_series
 
-killall $probe_cmd
-sleep 2s
-mv iperf_server_output.log $series_dir
-cd $series_dir
-tail -n 4 */iperf_tentry.log > iperf_client_sums
-# tail -n 4 */iperf_server_output.log > iperf_server_sums
+after_series_cleanup()
+{
+    killall $probe_cmd
+    sleep 2s
+    mv iperf_server_output.log $series_dir
+    cd $series_dir
+    tail -n 4 */iperf_tentry.log > iperf_client_sums
+    # tail -n 4 */iperf_server_output.log > iperf_server_sums
+}
+after_series_cleanup
 
 # This calculates the number of record lines (rls) that happen during the warmup time
 # i.e. that we have to skip. rls are lines that contain valuable records, i.e. lines that are
@@ -83,7 +87,6 @@ tail -n 4 */iperf_tentry.log > iperf_client_sums
 # So it's: ($warmup_seconds/$iperf_report_interval) * $flowcount
 #  - Per report interval there's 1 rl for every flow
 #  - If we have report interval 0.1 s and 1s warmup time. theres 1/0.1 = 10 reports
-
 # The $(( )) is to start the arithmetic evaluation mode of the bash, see man bash
 
 rls_to_ignore=$(( (warmup_seconds/iperf_report_interval) * flowcount))
@@ -177,17 +180,20 @@ plot_throughput_intervals()
 # also create the fancy publication diagrams
 gnuplot ../throughput_publication.plt  ../SRTTs_boxplot_publication.plt
 
+store_configs()
+{
+    # Write a file with our path config
+    echo "ig0:" 		   		> path_config
+    ssh root@ig0 "ip r ; and tc qdisc ls"   >> path_config
+    echo "ig1:" 		   		>> path_config
+    ssh root@ig1 "ip r ; and tc qdisc ls"   >> path_config
+    echo "ig2:" 		   		>> path_config
+    ssh root@ig2 "ip r ; and tc qdisc ls"   >> path_config
 
-# Write a file with our path config
-echo "ig0:" 		   		> path_config
-ssh root@ig0 "ip r ; and tc qdisc ls"   >> path_config
-echo "ig1:" 		   		>> path_config
-ssh root@ig1 "ip r ; and tc qdisc ls"   >> path_config
-echo "ig2:" 		   		>> path_config
-ssh root@ig2 "ip r ; and tc qdisc ls"   >> path_config
-
-scp root@tentry:/etc/multivpn.cfg tentry_multivpn.cfg
-cp  /etc/multivpn.cfg texit_multivpn.cfg
+    scp root@tentry:/etc/multivpn.cfg tentry_multivpn.cfg
+    cp  /etc/multivpn.cfg texit_multivpn.cfg
+}
+store_configs
 
 echo -e "\e[31;1mSeries dir: $series_dir\e[0m"
 
