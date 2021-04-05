@@ -9,60 +9,64 @@
 probe_cmd=iperf
 iperf_report_interval=1
 
+set_path_characteristics()
+{
+    echo "Setting path characteristics on all subtunnel paths..."
+    # ig0
+    ssh root@ig0 "tc qdisc change dev eth0.11 root netem delay $((ig0_rtt/2))ms rate $ig0_rate"
+    ssh root@ig0 "tc qdisc change dev eth0.21 root netem delay $((ig0_rtt/2))ms rate $ig0_rate"
 
-echo "Setting path characteristics on all subtunnel paths..."
-# ig0
-ssh root@ig0 "tc qdisc change dev eth0.11 root netem delay $((ig0_rtt/2))ms rate $ig0_rate"
-ssh root@ig0 "tc qdisc change dev eth0.21 root netem delay $((ig0_rtt/2))ms rate $ig0_rate"
+    # ig1
+    ssh root@ig1 "tc qdisc change dev eth0.12 root netem delay $((ig1_rtt/2))ms rate $ig1_rate"
+    ssh root@ig1 "tc qdisc change dev eth0.22 root netem delay $((ig1_rtt/2))ms rate $ig1_rate"
 
-# ig1
-ssh root@ig1 "tc qdisc change dev eth0.12 root netem delay $((ig1_rtt/2))ms rate $ig1_rate"
-ssh root@ig1 "tc qdisc change dev eth0.22 root netem delay $((ig1_rtt/2))ms rate $ig1_rate"
+    # ig2
+    ssh root@ig2 "tc qdisc change dev eth0.13 root netem delay $((ig2_rtt/2))ms rate $ig2_rate"
+    ssh root@ig2 "tc qdisc change dev eth0.23 root netem delay $((ig2_rtt/2))ms rate $ig2_rate"
 
-# ig2
-ssh root@ig2 "tc qdisc change dev eth0.13 root netem delay $((ig2_rtt/2))ms rate $ig2_rate"
-ssh root@ig2 "tc qdisc change dev eth0.23 root netem delay $((ig2_rtt/2))ms rate $ig2_rate"
+    ssh root@tentry " cd /proc/sys/net/dccp/default ; echo $CCID > rx_ccid ; echo $CCID > tx_ccid"
+    echo $CCID > /proc/sys/net/dccp/default/rx_ccid ; echo $CCID > /proc/sys/net/dccp/default/tx_ccid
 
-ssh root@tentry " cd /proc/sys/net/dccp/default ; echo $CCID > rx_ccid ; echo $CCID > tx_ccid"
-
-echo "Done!"
-
-echo $CCID > /proc/sys/net/dccp/default/rx_ccid ; echo $CCID > /proc/sys/net/dccp/default/tx_ccid
-
+    echo "Done!"
+}
+set_path_characteristics
 
 series_dir="${investigation_prefix}:series_${runtime}s_${udp_flag}_${bandwith_opt}_${flowcount}flows_${run}_${hdr_opt}_2subtun__ig1:${ig1_rtt}ms,${ig1_rate}__ig2:${ig2_rtt}ms,${ig2_rate}_$CCID"
-
 mkdir $series_dir
 
 $probe_cmd  -s -i 0.1  > iperf_server_output.log  &
 
-sched_algo=llfmt_noqueue_busy_wait  
-echo -en "\e[32;1m[1/6]  \e[0m"
-source ./run_experiment.sh 
+run_single_experiments()
+{
+    sched_algo=llfmt_noqueue_busy_wait  
+    echo -en "\e[32;1m[1/6]  \e[0m"
+    source ./run_experiment.sh 
 
-sched_algo=afmt_noqueue_busy_wait
-echo -en "\e[32;1m[2/6]  \e[0m"
-source ./run_experiment.sh
+    sched_algo=afmt_noqueue_busy_wait
+    echo -en "\e[32;1m[2/6]  \e[0m"
+    source ./run_experiment.sh
 
-sched_algo=afmt_noqueue_drop
-echo -en "\e[32;1m[3/6]  \e[0m"
-source ./run_experiment.sh
+    sched_algo=afmt_noqueue_drop
+    echo -en "\e[32;1m[3/6]  \e[0m"
+    source ./run_experiment.sh
 
-sched_algo=afmt_fl
-echo -en "\e[32;1m[4/6]  \e[0m"
-source ./run_experiment.sh
+    sched_algo=afmt_fl
+    echo -en "\e[32;1m[4/6]  \e[0m"
+    source ./run_experiment.sh
 
-hdr_opt= #"-hdr"
-sched_algo=otias_sock_drop
-echo -en "\e[32;1m[5/6]  \e[0m"
-source ./run_experiment.sh
+    hdr_opt= #"-hdr"
+    sched_algo=otias_sock_drop
+    echo -en "\e[32;1m[5/6]  \e[0m"
+    source ./run_experiment.sh
 
-sched_algo=srtt_min_busy_wait
-echo -en "\e[32;1m[6/6]  \e[0m"
-source ./run_experiment.sh
+    sched_algo=srtt_min_busy_wait
+    echo -en "\e[32;1m[6/6]  \e[0m"
+    source ./run_experiment.sh
 
-#sched_algo=rr
-#source ./run_experiment.sh
+    #sched_algo=rr
+    #source ./run_experiment.sh
+}
+run_single_experiments
 
 killall $probe_cmd
 sleep 2s
