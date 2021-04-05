@@ -27,6 +27,8 @@
 #    - evtl. eigenes script auf tentry das mpvpn config ändert (3. subtunnel toggled), dann hier callen
 
 investigation_prefix=all_asym_5flows_repeat
+probe_cmd=iperf
+iperf_report_interval=1
 
 runtime=70
 warmup_seconds=10

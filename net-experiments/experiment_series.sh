@@ -6,9 +6,6 @@
 # Sourcing means the current shell will execute the script instead of starting a new bash 
 # Every experimnt script will place its result dir into our $series_dir by itself
 
-probe_cmd=iperf
-iperf_report_interval=1
-
 set_path_characteristics()
 {
     echo "Setting path characteristics on all subtunnel paths..."
